@@ -117,8 +117,22 @@ public:
         return *this;
     }
 
-    constexpr friend auto
-    operator==(Vec const& a, Vec const& b) -> bool
+    constexpr auto
+    operator*=(T const& value) -> Vec& {
+        for (auto& x : *this) {
+            x *= value;
+        }
+        return *this;
+    }
+
+    constexpr auto operator/=(T const& value) -> Vec& {
+        for (auto& x : *this) {
+            x /= value;
+        }
+        return *this;
+    }
+
+    constexpr friend auto operator==(Vec const& a, Vec const& b) -> bool
     requires(concepts::EqualityComparable<T>)
     {
         return a.values() == b.values();
@@ -200,6 +214,28 @@ private:
         auto result = a;
         result -= b;
         return result;
+    }
+
+    constexpr friend auto operator*(Vec const& a, T const& b) -> Vec {
+        auto result = a;
+        a *= b;
+        return a;
+    }
+    constexpr friend auto operator*(T const& b, Vec& a) -> Vec {
+        auto result = a;
+        a *= b;
+        return a;
+    }
+
+    constexpr friend auto operator/(Vec const& a, T const& b) -> Vec {
+        auto result = a;
+        a /= b;
+        return a;
+    }
+    constexpr friend auto operator/(T const& b, Vec& a) -> Vec {
+        auto result = a;
+        a /= b;
+        return a;
     }
 
     auto tag_invoke(di::Tag<di::size>, Vec const& self) { return self.values().size(); }

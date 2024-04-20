@@ -304,6 +304,12 @@ namespace detail {
 
     template<>
     struct MakeSignedHelper<char32_t> : TypeConstant<types::i32> {};
+
+    template<>
+    struct MakeSignedHelper<float> : TypeConstant<float> {};
+
+    template<>
+    struct MakeSignedHelper<double> : TypeConstant<double> {};
 }
 
 template<typename T>

@@ -16,4 +16,13 @@ concept IndirectStrictWeakOrder =
     StrictWeakOrder<F&, meta::IteratorReference<It>, meta::IteratorValue<Jt>&> &&
     StrictWeakOrder<F&, meta::IteratorReference<It>, meta::IteratorReference<Jt>> &&
     StrictWeakOrder<F&, meta::IteratorCommonReference<It>, meta::IteratorCommonReference<Jt>>;
+
+template<typename F, typename It, typename Jt = It>
+concept IndirectStrictPartialOrder =
+    IndirectlyReadable<It> && IndirectlyReadable<Jt> && CopyConstructible<F> &&
+    StrictPartialOrder<F&, meta::IteratorValue<It>&, meta::IteratorValue<Jt>&> &&
+    StrictPartialOrder<F&, meta::IteratorValue<It>&, meta::IteratorReference<Jt>> &&
+    StrictPartialOrder<F&, meta::IteratorReference<It>, meta::IteratorValue<Jt>&> &&
+    StrictPartialOrder<F&, meta::IteratorReference<It>, meta::IteratorReference<Jt>> &&
+    StrictPartialOrder<F&, meta::IteratorCommonReference<It>, meta::IteratorCommonReference<Jt>>;
 }
