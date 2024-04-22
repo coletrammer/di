@@ -109,7 +109,9 @@ namespace repeat_ns {
             Send sender;
 
             template<concepts::Like<Type> Self, typename Env>
-            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, Env&&) -> Sigs<Send, Env>;
+            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, Env&&) -> Sigs<Send, Env> {
+                return {};
+            }
 
             template<concepts::Like<Type> Self, typename Rec>
             requires(concepts::SubscriberOf<Rec, Sigs<Send, meta::EnvOf<Rec>>>)

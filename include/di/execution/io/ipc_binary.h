@@ -541,7 +541,9 @@ namespace ipc_binary_ns {
                     di::declval<RxFun>(), di::declval<Env>))>;
 
             template<typename Env>
-            friend auto tag_invoke(Tag<get_completion_signatures>, Type&&, Env&&) -> Sigs<Env>;
+            friend auto tag_invoke(Tag<get_completion_signatures>, Type&&, Env&&) -> Sigs<Env> {
+                return {};
+            }
 
             template<typename Rec>
             requires(concepts::ReceiverOf<Rec, Sigs<meta::EnvOf<Rec>>>)

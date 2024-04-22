@@ -172,8 +172,7 @@ public:
 private:
     View m_base {};
     [[no_unique_address]] util::StoreIf<util::NonPropagatingCache<ReverseIterator<meta::ContainerIterator<View>>>,
-                                        !concepts::CommonContainer<View>>
-        m_end_cache;
+                                        !concepts::CommonContainer<View>> m_end_cache;
 };
 
 template<typename Con>

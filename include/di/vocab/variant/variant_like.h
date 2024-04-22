@@ -29,7 +29,7 @@ namespace detail {
 
     template<typename T, size_t... indices>
     struct VariantLikeHelper<T, meta::ListV<indices...>> {
-        constexpr static bool value = ((HasVariantAlernative<T, indices> && HasVariantGet<T, indices>) &&...);
+        constexpr static bool value = ((HasVariantAlernative<T, indices> && HasVariantGet<T, indices>) && ...);
     };
 }
 

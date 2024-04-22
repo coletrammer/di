@@ -162,8 +162,10 @@ namespace counting_scope_ns {
 
         private:
             template<concepts::RemoveCVRefSameAs<Type> Self, typename E>
-            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, E&&)
-                -> meta::CompletionSignaturesOf<meta::Like<Self, Send>, Env<Alloc, E>>;
+            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&,
+                                   E&&) -> meta::CompletionSignaturesOf<meta::Like<Self, Send>, Env<Alloc, E>> {
+                return {};
+            }
 
             template<concepts::RemoveCVRefSameAs<Type> Self, typename Rec>
             requires(concepts::ReceiverOf<

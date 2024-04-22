@@ -290,7 +290,9 @@ namespace first_value_ns {
             [[no_unique_address]] Seq sequence;
 
             template<concepts::RemoveCVRefSameAs<Type> Self, typename Env>
-            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, Env&&) -> Sigs<meta::Like<Self, Seq>, Env>;
+            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, Env&&) -> Sigs<meta::Like<Self, Seq>, Env> {
+                return {};
+            }
 
             template<concepts::RemoveCVRefSameAs<Type> Self, typename Rec>
             requires(concepts::ReceiverOf<Rec, Sigs<meta::Like<Self, Seq>, meta::EnvOf<Rec>>>)

@@ -105,7 +105,9 @@ namespace into_result_ns {
         private:
             template<concepts::DecaysTo<Type> Self, typename Env>
             friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&, Env&&)
-                -> types::CompletionSignatures<SetValue(ResultType<MakeEnv<Env>, meta::Like<Self, Send>>)>;
+                -> types::CompletionSignatures<SetValue(ResultType<MakeEnv<Env>, meta::Like<Self, Send>>)> {
+                return {};
+            }
 
             template<concepts::DecaysTo<Type> Self, concepts::Receiver Rec,
                      typename Value = ResultType<MakeEnv<meta::EnvOf<Rec>>, meta::Like<Self, Send>>>

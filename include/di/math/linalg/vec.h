@@ -90,15 +90,16 @@ public:
         }
         return *this;
     }
-    constexpr auto operator+=(SignedT const& value) -> Vec& requires(!di::SameAs<SignedT, T>) {
+    constexpr auto operator+=(SignedT const& value) -> Vec&
+    requires(!di::SameAs<SignedT, T>)
+    {
         for (auto& x : *this) {
             x += value;
         }
         return *this;
     }
 
-    constexpr auto
-    operator-=(Vec const& other) -> Vec& {
+    constexpr auto operator-=(Vec const& other) -> Vec& {
         for (auto [a, b] : di::zip(*this, other)) {
             a -= b;
         }
@@ -110,15 +111,16 @@ public:
         }
         return *this;
     }
-    constexpr auto operator-=(SignedT const& value) -> Vec& requires(!di::SameAs<SignedT, T>) {
+    constexpr auto operator-=(SignedT const& value) -> Vec&
+    requires(!di::SameAs<SignedT, T>)
+    {
         for (auto& x : *this) {
             x -= value;
         }
         return *this;
     }
 
-    constexpr auto
-    operator*=(T const& value) -> Vec& {
+    constexpr auto operator*=(T const& value) -> Vec& {
         for (auto& x : *this) {
             x *= value;
         }
@@ -244,15 +246,15 @@ private:
 
     template<usize index>
     requires(index < extent)
-    constexpr friend auto tag_invoke(di::Tag<vocab::tuple_element>, di::InPlaceType<Vec>, Constexpr<index>)
-        -> InPlaceType<T> {
+    constexpr friend auto tag_invoke(di::Tag<vocab::tuple_element>, di::InPlaceType<Vec>,
+                                     Constexpr<index>) -> InPlaceType<T> {
         return {};
     }
 
     template<usize index>
     requires(index < extent)
-    constexpr friend auto tag_invoke(di::Tag<vocab::tuple_element>, di::InPlaceType<Vec const>, Constexpr<index>)
-        -> InPlaceType<T const> {
+    constexpr friend auto tag_invoke(di::Tag<vocab::tuple_element>, di::InPlaceType<Vec const>,
+                                     Constexpr<index>) -> InPlaceType<T const> {
         return {};
     }
 

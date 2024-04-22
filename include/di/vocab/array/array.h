@@ -201,12 +201,16 @@ private:
     template<types::size_t index>
     requires(index < extent)
     constexpr friend InPlaceType<T> tag_invoke(types::Tag<vocab::tuple_element>, types::InPlaceType<Array>,
-                                               Constexpr<index>);
+                                               Constexpr<index>) {
+        return {};
+    }
 
     template<types::size_t index>
     requires(index < extent)
     constexpr friend InPlaceType<T const> tag_invoke(types::Tag<vocab::tuple_element>, types::InPlaceType<Array const>,
-                                                     Constexpr<index>);
+                                                     Constexpr<index>) {
+        return {};
+    }
 
     template<concepts::DecaySameAs<Array> Self, types::size_t index>
     requires(index < extent)

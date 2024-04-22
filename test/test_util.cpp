@@ -109,4 +109,5 @@ constexpr static void named_arguments() {
 TESTC(util, scope_exit)
 TESTC(util, uuid)
 TESTC(util, strong_int)
+TESTC(util, named_arguments)
 }

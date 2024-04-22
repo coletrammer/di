@@ -51,8 +51,10 @@ namespace with_env_ns {
 
         private:
             template<concepts::RemoveCVRefSameAs<Type> Self, typename En>
-            friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&, En&&)
-                -> meta::CompletionSignaturesOf<meta::Like<Self, Send>, Env>;
+            friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&,
+                                   En&&) -> meta::CompletionSignaturesOf<meta::Like<Self, Send>, Env> {
+                return {};
+            }
 
             template<concepts::RemoveCVRefSameAs<Type> Self, concepts::Receiver Rec>
             requires(concepts::SenderTo<meta::Like<Self, Send>, Receiver<Rec, Env>>)

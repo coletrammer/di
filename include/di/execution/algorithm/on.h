@@ -131,7 +131,9 @@ namespace on_ns {
                 -> meta::MakeCompletionSignatures<
                     meta::Like<Self, Send>, Env<E, Sched>,
                     meta::MakeCompletionSignatures<meta::ScheduleResult<Sched>, MakeEnv<E>, CompletionSignatures<>,
-                                                   meta::TypeConstant<CompletionSignatures<>>::template Invoke>>;
+                                                   meta::TypeConstant<CompletionSignatures<>>::template Invoke>> {
+                return {};
+            }
 
             constexpr friend auto tag_invoke(types::Tag<get_env>, Type const& self) {
                 return make_env(get_env(self.sender));

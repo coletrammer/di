@@ -41,10 +41,11 @@ namespace detail {
         constexpr explicit MatchIntegerPrefixParser(int radix) : m_radix(radix) {}
 
         template<concepts::ParserContext Context>
-        constexpr auto parse(Context& context) const -> meta::ParserContextResult<
-            vocab::Tuple<
-                int, meta::Reconstructed<Context, meta::ContainerIterator<Context>, meta::ContainerIterator<Context>>>,
-            Context> {
+        constexpr auto parse(Context& context) const
+            -> meta::ParserContextResult<
+                vocab::Tuple<int, meta::Reconstructed<Context, meta::ContainerIterator<Context>,
+                                                      meta::ContainerIterator<Context>>>,
+                Context> {
             auto parse_digits = [&](int inferred_radix)
                 -> meta::ParserContextResult<
                     vocab::Tuple<int, meta::Reconstructed<Context, meta::ContainerIterator<Context>,

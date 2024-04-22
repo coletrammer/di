@@ -49,7 +49,7 @@ namespace detail {
     } && ConcatIndirectlyReadable<Cons...>;
 
     template<typename... Cons>
-    concept ConcatRandomAccess = ((concepts::RandomAccessContainer<Cons> && concepts::SizedContainer<Cons>) &&...);
+    concept ConcatRandomAccess = ((concepts::RandomAccessContainer<Cons> && concepts::SizedContainer<Cons>) && ...);
 
     struct ConstantTimeReversible {
         template<typename Con>

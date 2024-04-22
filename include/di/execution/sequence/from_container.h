@@ -177,7 +177,9 @@ namespace from_container_ns {
 
             template<concepts::RemoveCVRefSameAs<Type> Self, typename Env>
             requires(concepts::DecayConstructible<meta::Like<Self, Con>>)
-            friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&, Env&&) -> Signatures<Con, Env>;
+            friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&, Env&&) -> Signatures<Con, Env> {
+                return {};
+            }
 
             friend auto tag_invoke(Tag<get_env>, Type const&) {
                 return make_env(empty_env, with(is_always_lockstep_sequence, c_<true>));

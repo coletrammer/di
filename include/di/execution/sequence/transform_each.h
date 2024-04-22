@@ -105,8 +105,10 @@ namespace transform_each_ns {
 
             template<concepts::RemoveCVRefSameAs<Type> Self, typename Env>
             requires(concepts::DecayConstructible<meta::Like<Self, Fun>>)
-            friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&, Env&&)
-                -> Signatures<meta::Like<Self, Seq>, Fun, MakeEnv<Env>>;
+            friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&,
+                                   Env&&) -> Signatures<meta::Like<Self, Seq>, Fun, MakeEnv<Env>> {
+                return {};
+            }
 
             friend auto tag_invoke(types::Tag<get_env>, Type const& self) { return make_env(get_env(self.sequence)); }
         };

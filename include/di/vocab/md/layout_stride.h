@@ -62,10 +62,11 @@ public:
     template<detail::LayoutMappingAlike StridedLayoutMapping>
     requires(concepts::ConstructibleFrom<ExtentsType, typename StridedLayoutMapping::ExtentsType> &&
              StridedLayoutMapping::is_always_unique() && StridedLayoutMapping::is_always_strided())
-    constexpr explicit((!concepts::ConvertibleTo<typename StridedLayoutMapping::ExtentsType, ExtentsType>) &&(
-        detail::IsMappingOf<LayoutLeft, StridedLayoutMapping> ||
-        detail::IsMappingOf<LayoutRight, StridedLayoutMapping> ||
-        detail::IsMappingOf<LayoutStride, StridedLayoutMapping>) ) Mapping(StridedLayoutMapping const& other)
+    constexpr explicit((!concepts::ConvertibleTo<typename StridedLayoutMapping::ExtentsType, ExtentsType>) &&
+                       (detail::IsMappingOf<LayoutLeft, StridedLayoutMapping> ||
+                        detail::IsMappingOf<LayoutRight, StridedLayoutMapping> ||
+                        detail::IsMappingOf<LayoutStride, StridedLayoutMapping>) )
+        Mapping(StridedLayoutMapping const& other)
         : m_extents(other.extents()) {
         for (auto d : container::view::range(rank)) {
             m_strides[d] = other.stride(d);

@@ -311,8 +311,10 @@ namespace when_all_ns {
         private:
             template<concepts::RemoveCVRefSameAs<Type> Self, typename E>
             requires(ValidSenders<Env<E>, meta::Like<Self, Senders>...>)
-            friend auto tag_invoke(types::Tag<execution::get_completion_signatures>, Self&&, E&&)
-                -> Sigs<E, meta::Like<Self, Senders>...>;
+            friend auto tag_invoke(types::Tag<execution::get_completion_signatures>, Self&&,
+                                   E&&) -> Sigs<E, meta::Like<Self, Senders>...> {
+                return {};
+            }
 
             template<concepts::RemoveCVRefSameAs<Type> Self, concepts::Receiver Rec>
             requires(concepts::ReceiverOf<Rec, meta::CompletionSignaturesOf<meta::Like<Self, Type>, meta::EnvOf<Rec>>>)

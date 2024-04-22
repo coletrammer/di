@@ -496,7 +496,9 @@ namespace zip_ns {
         private:
             template<concepts::RemoveCVRefSameAs<Type> Self, typename E>
             requires(ValidSenders<Env<E>, meta::Like<Self, Seqs>...>)
-            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, E&&) -> Sigs<E, meta::Like<Self, Seqs>...>;
+            friend auto tag_invoke(Tag<get_completion_signatures>, Self&&, E&&) -> Sigs<E, meta::Like<Self, Seqs>...> {
+                return {};
+            }
 
             template<concepts::RemoveCVRefSameAs<Type> Self, concepts::Receiver Rec>
             requires(

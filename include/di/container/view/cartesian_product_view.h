@@ -13,7 +13,7 @@ namespace detail {
     template<typename First, typename... Rest>
     concept CartesianProductIsRandomAccess =
         concepts::RandomAccessContainer<First> &&
-        ((concepts::RandomAccessContainer<Rest> && concepts::SizedContainer<Rest>) &&...);
+        ((concepts::RandomAccessContainer<Rest> && concepts::SizedContainer<Rest>) && ...);
 
     template<typename Con>
     concept CartesianProductCommonArg =
@@ -22,7 +22,7 @@ namespace detail {
     template<typename First, typename... Rest>
     concept CartesianProductIsBidirectional =
         concepts::BidirectionalContainer<First> &&
-        ((concepts::BidirectionalContainer<Rest> && CartesianProductCommonArg<Rest>) &&...);
+        ((concepts::BidirectionalContainer<Rest> && CartesianProductCommonArg<Rest>) && ...);
 
     template<typename First, typename... Rest>
     concept CartesianProductIsCommon = CartesianProductCommonArg<First>;

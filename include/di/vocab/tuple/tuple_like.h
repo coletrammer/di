@@ -28,7 +28,7 @@ namespace detail {
 
     template<typename T, types::size_t... indices>
     struct TupleLikeHelper<T, meta::ListV<indices...>> {
-        constexpr static bool value = ((HasTupleElement<T, indices> && HasTupleGet<T, indices>) &&...);
+        constexpr static bool value = ((HasTupleElement<T, indices> && HasTupleGet<T, indices>) && ...);
     };
 }
 

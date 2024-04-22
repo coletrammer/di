@@ -77,13 +77,13 @@ struct Constexpr {
         return {};
     }
 
-    template<detail::ConstexprParam... Vs>
-    constexpr auto operator()(Vs...) const -> Constexpr<(val(Vs::value...))> {
+    template<detail::ConstexprParam... Vs, auto v = val>
+    constexpr auto operator()(Vs...) const -> Constexpr<(v(Vs::value...))> {
         return {};
     }
 
-    template<detail::ConstexprParam... Vs>
-    constexpr auto operator[](Vs...) const -> Constexpr<(val[Vs::value...])> {
+    template<detail::ConstexprParam... Vs, auto v = val>
+    constexpr auto operator[](Vs...) const -> Constexpr<(v[Vs::value...])> {
         return {};
     }
 

@@ -52,7 +52,9 @@ namespace into_variant_ns {
             friend auto tag_invoke(types::Tag<get_completion_signatures>, Self&&, Env&&)
                 -> meta::MakeCompletionSignatures<
                     meta::Like<Self, Send>, MakeEnv<Env>, CompletionSignatures<>,
-                    IntoVariantSetValue<meta::Like<Self, Send>, MakeEnv<Env>>::template Invoke>;
+                    IntoVariantSetValue<meta::Like<Self, Send>, MakeEnv<Env>>::template Invoke> {
+                return {};
+            }
 
             template<concepts::DecaysTo<Type> Self, concepts::Receiver Rec,
                      typename Value = IntoVariantType<meta::Like<Self, Send>, MakeEnv<meta::EnvOf<Rec>>>>
