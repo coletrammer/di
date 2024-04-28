@@ -1,6 +1,7 @@
 # Di Library Documentation
 
 - @subpage md_docs_2di_2allocator - Allocator
+- @subpage md_docs_2di_2bytes - Bytes
 - @subpage md_docs_2di_2execution - Execution
 - @subpage md_docs_2di_2intrusive - Intrusive containers
 - @subpage md_docs_2di_2ipc - Inter-process communication

@@ -91,7 +91,8 @@ public:
     requires(concepts::ConstructibleFrom<T, Args...> && creation_is_fallible(in_place_type<T>))
     constexpr static void create(InPlaceType<Any>, meta::LikeExpected<CreationResult<T>, Any>& self, InPlaceType<T>,
                                  Args&&... args) {
-        auto result = di::allocate_one<T>(self->m_allocator);
+        using Store = detail::ObjectWithRefCount<T>;
+        auto result = di::allocate_one<Store>(self->m_allocator);
         if (!result) {
             self = vocab::Unexpected(util::move(result).error());
             return;
@@ -100,7 +101,7 @@ public:
         auto* pointer = *result;
         util::construct_at(pointer, util::forward<Args>(args)...);
 
-        self->m_pointer = pointer;
+        self->m_pointer = pointer->to_object_pointer();
     }
 
     template<typename T, typename... Args>
