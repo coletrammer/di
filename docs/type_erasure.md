@@ -33,7 +33,7 @@ Now, to use this construction, you can pass a IDrawable by reference to a functi
 memory safe way, either std::unique_ptr or std::shared_ptr must be used. These types cannot be treated as values, so we
 must use indirection. Furthremore, the objects always have to be heap allocated.
 
-## Type Erasure
+## Using Type Erasure
 
 Using type erasure, the interface class poses an abstract set of requirements, and can be constructed from any type
 which meets them. The type internally is memory safe, by either storing the object internally (small object

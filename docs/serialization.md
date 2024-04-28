@@ -79,7 +79,9 @@ struct MyType {
     int y_abc;
     int z_abc;
 
-    constexpr friend auto tag_invoke(di::Tag<di::serialize_metadata>, di::InPlaceType<MyType>, di::InPlaceType<di::JsonFormat>) {
+    constexpr friend auto tag_invoke(di::Tag<di::serialize_metadata>,
+                                     di::InPlaceType<MyType>,
+                                     di::InPlaceType<di::JsonFormat>) {
         return di::make_tuple(
             di::field<"xAbc", &MyType::x>,
             di::field<"zAbc", &MyType::z>
