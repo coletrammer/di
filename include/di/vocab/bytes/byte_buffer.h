@@ -74,10 +74,10 @@ class ExclusiveByteBufferImpl;
 
 template<concepts::Allocator Alloc>
 class ByteBufferImpl {
-private:
-    using Store = ByteStore<Alloc>;
-
 public:
+    using Store = ByteStore<Alloc>;
+    using ByteBuffer = ByteBufferImpl;
+
     template<concepts::Impl<meta::List<AsByteSpan>> T>
     requires(!concepts::DerivedFrom<T, ByteBufferImpl> && concepts::FallibleAllocator<Alloc>)
     static auto create(T&& value) -> meta::LikeExpected<meta::AllocatorResult<Alloc>, ByteBufferImpl> {
@@ -133,11 +133,10 @@ private:
 
 template<concepts::Allocator Alloc>
 class ExclusiveByteBufferImpl {
-private:
+public:
     using Store = ByteStore<Alloc>;
     using ByteBuffer = ByteBufferImpl<Alloc>;
 
-public:
     template<concepts::Impl<meta::List<AsWritableByteSpan>> T>
     requires(!concepts::DerivedFrom<T, ExclusiveByteBufferImpl> && concepts::FallibleAllocator<Alloc>)
     static auto create(T&& value) -> meta::LikeExpected<meta::AllocatorResult<Alloc>, ExclusiveByteBufferImpl> {
@@ -176,10 +175,10 @@ public:
         return di::move(*this).m_store;
     }
 
-    constexpr auto keep_first(usize count) { m_data = m_data.first(count).value_or(Span<byte> {}); }
-    constexpr auto keep_last(usize count) { m_data = m_data.last(count).value_or(Span<byte> {}); }
-    constexpr auto keep_slice(usize offset) { m_data = m_data.subspan(offset).value_or(Span<byte> {}); }
-    constexpr auto keep_slice(usize offset, usize count) {
+    constexpr auto shrink_to_first(usize count) { m_data = m_data.first(count).value_or(Span<byte> {}); }
+    constexpr auto shrink_to_last(usize count) { m_data = m_data.last(count).value_or(Span<byte> {}); }
+    constexpr auto shrink_to_slice(usize offset) { m_data = m_data.subspan(offset).value_or(Span<byte> {}); }
+    constexpr auto shrink_to_slice(usize offset, usize count) {
         m_data = m_data.subspan(offset, count).value_or(Span<byte> {});
     }
 
