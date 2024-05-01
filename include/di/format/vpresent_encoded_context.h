@@ -16,7 +16,7 @@ namespace detail {
     template<concepts::Encoding Enc, typename Var>
     constexpr Result<void> do_format(Var&& variant, FormatParseContext<Enc>& parse_context,
                                      concepts::FormatContext auto& context, bool debug = false) {
-        return visit(
+        return di::visit<Result<void>>(
             [&]<typename T>(T&& value) -> Result<void> {
                 if constexpr (concepts::InstanceOf<meta::RemoveCVRef<T>, ErasedArg>) {
                     return value.do_format(parse_context, context, debug);

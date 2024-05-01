@@ -161,7 +161,7 @@ public:
         auto context = TargetContext {};
         DI_TRY(di::format::vpresent_encoded_context<Enc>(
             di::container::string::StringViewImpl<Enc>(encoding::assume_valid, u8"{}", 2),
-            di::format::make_constexpr_format_args(number), context));
+            di::format::make_format_args<TargetContext>(number), context));
 
         DI_TRY(io::write_exactly(m_writer, context.output()));
         return {};

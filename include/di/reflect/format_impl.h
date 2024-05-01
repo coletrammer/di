@@ -1,7 +1,7 @@
 #pragma once
 
 #include <di/format/formatter.h>
-#include <di/format/make_constexpr_format_args.h>
+#include <di/format/make_format_args.h>
 #include <di/format/vpresent_encoded_context.h>
 #include <di/reflect/enum_to_string.h>
 #include <di/reflect/reflect.h>
@@ -28,7 +28,7 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<T>, Format
                 context.output(':');
                 context.output(' ');
                 (void) vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-                    u8"{}"_sv, make_constexpr_format_args(field.get(value)), context);
+                    u8"{}"_sv, format::make_format_args<decltype(context)>(field.get(value)), context);
             },
             reflection::reflect(value));
 

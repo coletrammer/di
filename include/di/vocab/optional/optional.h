@@ -301,8 +301,8 @@ private:
     }
 
     // Monadic interface
-    template<concepts::DecaySameAs<Optional> Self, concepts::Invocable<OptionalGetValue<meta::Like<Self, Storage>>> F,
-             typename R = meta::InvokeResult<F, OptionalGetValue<meta::Like<Self, Storage>>>>
+    template<concepts::DecaySameAs<Optional> Self, concepts::Invocable<meta::Like<Self, Value>> F,
+             typename R = meta::InvokeResult<F, meta::Like<Self, Value>>>
     requires(concepts::Optional<R>)
     constexpr friend R tag_invoke(types::Tag<function::monad::bind>, Self&& self, F&& f) {
         if (self.has_value()) {
@@ -312,8 +312,8 @@ private:
         }
     }
 
-    template<concepts::DecaySameAs<Optional> Self, concepts::Invocable<OptionalGetValue<meta::Like<Self, Storage>>> F,
-             typename R = meta::UnwrapRefDecay<meta::InvokeResult<F, OptionalGetValue<meta::Like<Self, Storage>>>>>
+    template<concepts::DecaySameAs<Optional> Self, concepts::Invocable<meta::Like<Self, Value>> F,
+             typename R = meta::UnwrapRefDecay<meta::InvokeResult<F, meta::Like<Self, Value>>>>
     constexpr friend Optional<R> tag_invoke(types::Tag<function::monad::fmap>, Self&& self, F&& f) {
         if (self.has_value()) {
             if constexpr (concepts::LanguageVoid<R>) {

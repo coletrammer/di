@@ -17,7 +17,7 @@ struct ErasedCallImpl;
 template<typename Tag, typename Storage, typename R, concepts::RemoveCVRefSameAs<This> Self, typename... BArgs,
          typename T>
 struct ErasedCallImpl<Method<Tag, R(Self, BArgs...)>, Storage, T> {
-    static R call(void* storage, BArgs... bargs) {
+    constexpr static R call(void* storage, BArgs... bargs) {
         using M = Method<Tag, R(Self, BArgs...)>;
 
         static_assert(concepts::AnyStorable<T, Storage>,
@@ -28,7 +28,7 @@ struct ErasedCallImpl<Method<Tag, R(Self, BArgs...)>, Storage, T> {
         auto const tag = Tag {};
 
         using QualifiedStorage = meta::MaybeConst<concepts::Const<meta::RemoveReference<This>>, Storage>;
-        auto* typed_storage = reinterpret_cast<QualifiedStorage*>(storage);
+        auto* typed_storage = static_cast<QualifiedStorage*>(storage);
         auto* object = typed_storage->template down_cast<meta::RemoveReference<T>>();
 
         if constexpr (concepts::TagInvocableTo<Tag const&, R, M, meta::Like<Self, T>, BArgs...>) {

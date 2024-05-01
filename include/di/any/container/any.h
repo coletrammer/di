@@ -139,7 +139,7 @@ struct AnyT {
         requires(is_trivially_copyable)
         = default;
 
-        Type(Type const& other)
+        constexpr Type(Type const& other)
         requires(is_copyable)
             : Storage(), m_vtable(other.m_vtable) {
             Storage::copy_construct(other.m_vtable, this, util::addressof(other));
@@ -149,7 +149,7 @@ struct AnyT {
         requires(is_trivially_moveable)
         = default;
 
-        Type(Type&& other)
+        constexpr Type(Type&& other)
         requires(is_moveable)
             : m_vtable(other.m_vtable) {
             Storage::move_construct(other.m_vtable, this, util::addressof(other));
@@ -180,7 +180,7 @@ struct AnyT {
         requires(is_trivially_destructible)
         = default;
 
-        ~Type()
+        constexpr ~Type()
         requires(!is_trivially_destructible)
         {
             Storage::destroy(m_vtable, this);
@@ -194,14 +194,14 @@ struct AnyT {
         requires(is_trivially_moveable)
         = default;
 
-        Type& operator=(Type const& other)
+        constexpr Type& operator=(Type const& other)
         requires(is_copyable)
         {
             Storage::copy_assign(m_vtable, this, other.m_vtable, util::addressof(other));
             return *this;
         }
 
-        Type& operator=(Type&& other)
+        constexpr Type& operator=(Type&& other)
         requires(is_moveable)
         {
             Storage::move_assign(m_vtable, this, other.m_vtable, util::addressof(other));
@@ -212,7 +212,7 @@ struct AnyT {
         requires(!concepts::DerivedFrom<meta::RemoveCVRef<U>, Type> &&
                  !concepts::InstanceOf<meta::RemoveCVRef<U>, InPlaceType> &&
                  concepts::AnyStorableInfallibly<VU, Storage> && concepts::ConstructibleFrom<VU, U>)
-        Type& operator=(U&& value) {
+        constexpr Type& operator=(U&& value) {
             if constexpr (!is_trivially_destructible) {
                 Storage::destroy(m_vtable, this);
             }
@@ -277,7 +277,7 @@ struct AnyT {
             }
         }
 
-        void reset()
+        constexpr void reset()
         requires(!is_reference)
         {
             if constexpr (!is_trivially_destructible) {

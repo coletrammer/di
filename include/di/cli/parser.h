@@ -176,39 +176,59 @@ namespace detail {
 
     private:
         constexpr bool option_required(usize index) const {
-            return function::index_dispatch<bool, sizeof...(Options)>(index, [&]<usize i>(Constexpr<i>) {
-                return util::get<i>(m_options).required();
-            });
+            if constexpr (sizeof...(Options) == 0) {
+                return false;
+            } else {
+                return function::index_dispatch<bool, sizeof...(Options)>(index, [&]<usize i>(Constexpr<i>) {
+                    return util::get<i>(m_options).required();
+                });
+            }
         }
 
         constexpr bool option_boolean(usize index) const {
-            return function::index_dispatch<bool, sizeof...(Options)>(index, [&]<usize i>(Constexpr<i>) {
-                return util::get<i>(m_options).boolean();
-            });
+            if constexpr (sizeof...(Options) == 0) {
+                return true;
+            } else {
+                return function::index_dispatch<bool, sizeof...(Options)>(index, [&]<usize i>(Constexpr<i>) {
+                    return util::get<i>(m_options).boolean();
+                });
+            }
         }
 
         constexpr Result<void> option_parse(usize index, Span<bool> seen_arguments, Base* output,
                                             Optional<TransparentStringView> input) const {
-            return function::index_dispatch<Result<void>, sizeof...(Options)>(index,
-                                                                              [&]<usize i>(Constexpr<i>) {
-                                                                                  return util::get<i>(m_options).parse(
-                                                                                      output, input);
-                                                                              }) |
-                   if_success([&] {
-                       seen_arguments[index] = true;
-                   });
+            if constexpr (sizeof...(Options) == 0) {
+                return Unexpected(BasicError::InvalidArgument);
+            } else {
+                return function::index_dispatch<Result<void>, sizeof...(Options)>(
+                           index,
+                           [&]<usize i>(Constexpr<i>) {
+                               return util::get<i>(m_options).parse(output, input);
+                           }) |
+                       if_success([&] {
+                           seen_arguments[index] = true;
+                       });
+            }
         }
 
         constexpr bool argument_variadic(usize index) const {
-            return function::index_dispatch<bool, sizeof...(Arguments)>(index, [&]<usize i>(Constexpr<i>) {
-                return util::get<i>(m_arguments).variadic();
-            });
+            if constexpr (sizeof...(Arguments) == 0) {
+                return false;
+            } else {
+                return function::index_dispatch<bool, sizeof...(Arguments)>(index, [&]<usize i>(Constexpr<i>) {
+                    return util::get<i>(m_arguments).variadic();
+                });
+            }
         }
 
         constexpr Result<void> argument_parse(usize index, Base* output, Span<TransparentStringView> input) const {
-            return function::index_dispatch<Result<void>, sizeof...(Arguments)>(index, [&]<usize i>(Constexpr<i>) {
-                return util::get<i>(m_arguments).parse(output, input);
-            });
+            if constexpr (sizeof...(Arguments) == 0) {
+                return Unexpected(BasicError::InvalidArgument);
+            } else {
+                return function::index_dispatch<Result<void>, sizeof...(Arguments)>(index, [&]<usize i>(Constexpr<i>) {
+                    return util::get<i>(m_arguments).parse(output, input);
+                });
+            }
         }
 
         constexpr usize minimum_required_argument_count() const {

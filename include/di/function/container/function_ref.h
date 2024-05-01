@@ -102,7 +102,7 @@ namespace function_ref_ns {
     };
 
     template<typename T>
-    auto down_cast(ErasedStorage storage) {
+    constexpr auto down_cast(ErasedStorage storage) {
         if constexpr (concepts::Const<T>) {
             return static_cast<T*>(storage.const_pointer);
         } else if constexpr (concepts::Object<T>) {
@@ -137,7 +137,7 @@ namespace function_ref_ns {
     public:
         template<concepts::LanguageFunction F>
         requires(is_invocable<F>)
-        FunctionRef(F* function)
+        constexpr FunctionRef(F* function)
             : m_storage(function), m_impl([](ErasedStorage storage, Args&&... args) noexcept(is_noexcept) -> R {
                 return function::invoke_r<R>(down_cast<F>(storage), util::forward<Args>(args)...);
             }) {
@@ -197,7 +197,7 @@ namespace function_ref_ns {
         requires(!concepts::SameAs<T, FunctionRef> && !concepts::Pointer<T> && is_invocable<Qualified<T>>)
         FunctionRef& operator=(T) = delete;
 
-        R operator()(Args... args) const noexcept(is_noexcept) {
+        constexpr R operator()(Args... args) const noexcept(is_noexcept) {
             return m_impl(m_storage, util::forward<Args>(args)...);
         }
 

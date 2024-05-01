@@ -16,17 +16,19 @@ class ErasedArg {
 private:
     using Encoding = meta::Encoding<Context>;
 
+    template<concepts::Formattable T>
+    constexpr static auto erased_format(void* value, FormatParseContext<Encoding>& parse_context, Context& context,
+                                        bool debug) -> di::Result<void> {
+        auto formatter = DI_TRY(format::formatter<T, Encoding>(parse_context, debug));
+        return formatter(context, *static_cast<meta::RemoveCVRef<T>*>(value));
+    }
+
 public:
     template<concepts::Formattable T>
     constexpr explicit ErasedArg(T&& value)
-        : m_pointer(util::voidify(util::addressof(value)))
-        , m_do_format([](void* value, FormatParseContext<Encoding>& parse_context, Context& context,
-                         bool debug) -> Result<void> {
-            auto formatter = DI_TRY(format::formatter<T, Encoding>(parse_context, debug));
-            return formatter(context, *static_cast<meta::RemoveCVRef<T>*>(value));
-        }) {}
+        : m_pointer(util::voidify(util::addressof(value))), m_do_format(erased_format<T>) {}
 
-    Result<void> do_format(FormatParseContext<Encoding>& parse_context, Context& context, bool debug) {
+    constexpr Result<void> do_format(FormatParseContext<Encoding>& parse_context, Context& context, bool debug) {
         return m_do_format(m_pointer, parse_context, context, debug);
     }
 

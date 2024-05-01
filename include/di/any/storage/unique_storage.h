@@ -29,7 +29,7 @@ namespace detail {
         using Type = Method<UniqueStorageManage, void(This&, Alloc&)>;
 
         template<typename T>
-        void operator()(T&, Alloc&) const;
+        constexpr void operator()(T&, Alloc&) const;
     };
 
     template<typename UniqueStorage, concepts::Allocator Alloc>
@@ -107,12 +107,12 @@ public:
     }
 
     template<typename T>
-    T* down_cast() {
+    constexpr T* down_cast() {
         return static_cast<T*>(m_pointer);
     }
 
     template<typename T>
-    T const* down_cast() const {
+    constexpr T const* down_cast() const {
         return static_cast<T const*>(m_pointer);
     }
 
@@ -126,7 +126,7 @@ private:
 namespace detail {
     template<typename UniqueStorage, concepts::Allocator Alloc>
     template<typename T>
-    void UniqueStorageManage<UniqueStorage, Alloc>::operator()(T& a, Alloc& allocator) const {
+    constexpr void UniqueStorageManage<UniqueStorage, Alloc>::operator()(T& a, Alloc& allocator) const {
         auto* pointer = util::addressof(a);
         util::destroy_at(pointer);
         di::deallocate_one<T>(allocator, pointer);

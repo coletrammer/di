@@ -6,7 +6,7 @@
 #include <di/container/string/string_view.h>
 #include <di/format/concepts/formattable.h>
 #include <di/format/formatter.h>
-#include <di/format/make_constexpr_format_args.h>
+#include <di/format/make_format_args.h>
 #include <di/format/vpresent_encoded_context.h>
 #include <di/meta/util.h>
 
@@ -26,7 +26,7 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Con>, Form
             }
             first = false;
             DI_TRY(vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-                u8"{}"_sv, make_constexpr_format_args(value), context));
+                u8"{}"_sv, format::make_format_args<decltype(context)>(value), context));
         }
         context.output(' ');
         context.output('}');

@@ -5,12 +5,14 @@
 #include <di/util/forward.h>
 
 namespace di::vocab {
-constexpr inline struct GetValueFunction {
+struct GetValueFunction {
     template<typename T>
-    constexpr auto operator()(T&& value) const -> di::meta::TagInvokeResult<GetValueFunction, T> {
-        return di::function::tag_invoke(*this, di::util::forward<T>(value));
+    constexpr static auto operator()(T&& value) -> di::meta::TagInvokeResult<GetValueFunction, T> {
+        return di::function::tag_invoke(GetValueFunction {}, di::util::forward<T>(value));
     }
-} get_value {};
+};
+
+constexpr inline auto get_value = GetValueFunction {};
 
 template<typename Storage>
 using OptionalGetValue = decltype(get_value(util::declval<Storage>()));

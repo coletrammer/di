@@ -4,7 +4,6 @@
 #include <di/container/string/string_impl.h>
 #include <di/format/concepts/formattable.h>
 #include <di/format/format_string_impl.h>
-#include <di/format/make_constexpr_format_args.h>
 #include <di/format/make_format_args.h>
 #include <di/format/vpresent_encoded.h>
 
@@ -14,11 +13,7 @@ namespace detail {
     struct PresentEncodedFunction {
         template<concepts::Formattable... Args>
         constexpr auto operator()(format::FormatStringImpl<Enc, Args...> format, Args&&... args) const {
-            if consteval {
-                return vpresent_encoded<Enc>(format, make_constexpr_format_args(args...));
-            } else {
-                return vpresent_encoded<Enc>(format, make_format_args<FormatContext<Enc>>(args...));
-            }
+            return vpresent_encoded<Enc>(format, format::make_format_args<FormatContext<Enc>>(args...));
         }
     };
 }

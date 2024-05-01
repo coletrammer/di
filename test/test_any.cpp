@@ -13,21 +13,21 @@ constexpr inline auto xf = X {};
 
 struct A {};
 struct B {
-    B() : nothing(di::make_box<i32>(42)) {}
+    constexpr B() : nothing(di::make_box<i32>(42)) {}
 
     di::Array<di::Byte, 16> padding {};
     di::Box<i32> nothing;
 };
 
-i32 tag_invoke(X, i32 const& x, i32 y) {
+constexpr i32 tag_invoke(X, i32 const& x, i32 y) {
     return x + y;
 }
 
-i32 tag_invoke(X, A const&, i32 y) {
+constexpr i32 tag_invoke(X, A const&, i32 y) {
     return y + 4;
 }
 
-i32 tag_invoke(X, B const&, i32 y) {
+constexpr i32 tag_invoke(X, B const&, i32 y) {
     return y + 5;
 }
 
@@ -39,7 +39,7 @@ struct Y : di::Dispatcher<Y, i32(di::This&), decltype(return_1)> {};
 
 constexpr inline auto yf = Y {};
 
-i32 tag_invoke(Y, i32& x) {
+constexpr i32 tag_invoke(Y, i32& x) {
     return x + 2;
 }
 
@@ -126,7 +126,7 @@ static void inline_() {
     ASSERT_EQ(yf(z), 5);
 }
 
-static void unique() {
+constexpr void unique() {
     using Any = di::any::AnyUnique<Interface>;
 
     auto x = Any::create(4);
@@ -229,16 +229,16 @@ static void shared() {
 }
 
 struct Z : di::Immovable {
-    explicit Z(i32 x_) : x(x_) {}
+    constexpr explicit Z(i32 x_) : x(x_) {}
 
     int x;
 };
 
-i32 tag_invoke(X, Z const& z, i32 y) {
+constexpr i32 tag_invoke(X, Z const& z, i32 y) {
     return y + z.x;
 }
 
-i32 tag_invoke(Y, di::meta::Type<Y>, Z& z) {
+constexpr i32 tag_invoke(Y, di::meta::Type<Y>, Z& z) {
     return 4 + z.x;
 }
 
@@ -263,7 +263,7 @@ static void immovable() {
 
 struct ZF : di::Dispatcher<ZF, void(di::This&&, i32)> {};
 
-void tag_invoke(ZF, A&&, i32 x) {
+constexpr void tag_invoke(ZF, A&&, i32 x) {
     ASSERT_EQ(x, 12);
 }
 
@@ -281,7 +281,7 @@ TESTC(any, meta)
 TESTC(any, vtable)
 TEST(any, ref)
 TEST(any, inline_)
-TEST(any, unique)
+TESTC(any, unique)
 TEST(any, hybrid)
 TEST(any, shared)
 TEST(any, immovable)

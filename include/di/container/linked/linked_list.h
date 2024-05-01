@@ -43,7 +43,7 @@ namespace detail {
         constexpr static bool is_sized(InPlaceType<T>) { return true; }
         constexpr static T& down_cast(InPlaceType<T>, Node& node) { return node.value(); }
 
-        constexpr static void did_remove(auto& list, auto& node) {
+        constexpr static void did_remove(auto& list, Node& node) {
             util::destroy_at(util::addressof(node));
             di::deallocate_one<Node>(list.allocator(), util::addressof(node));
         }
@@ -174,7 +174,7 @@ private:
     constexpr decltype(auto) create_node(Args&&... args) {
         return as_fallible(di::allocate_one<Node>(m_allocator)) % [&](Node* pointer) {
             util::construct_at(pointer, in_place, util::forward<Args>(args)...);
-            return util::ref(*static_cast<Node*>(pointer));
+            return util::ref(*pointer);
         } | try_infallible;
     }
 

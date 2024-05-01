@@ -1,6 +1,7 @@
 #pragma once
 
 #include <di/container/view/concat.h>
+#include <di/format/make_format_args.h>
 #include <di/format/vpresent_encoded_context.h>
 #include <di/function/value.h>
 #include <di/math/abs.h>
@@ -523,7 +524,8 @@ namespace detail {
         DI_ASSERT(!precision);
         (void) fill_and_align;
 
-        return vpresent_encoded_context<Enc>(context, format_string, make_constexpr_format_args(args...));
+        return vpresent_encoded_context<Enc>(context, format_string,
+                                             format::make_format_args<decltype(context)>(args...));
     }
 }
 }
