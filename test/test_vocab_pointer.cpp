@@ -55,7 +55,7 @@ constexpr void rc() {
     ASSERT_NOT_EQ(y, nullptr);
 }
 
-static void arc() {
+constexpr void arc() {
     struct X : di::IntrusiveRefCount<X> {
     private:
         friend di::IntrusiveRefCount<X>;
@@ -78,5 +78,5 @@ static void arc() {
 
 TESTC(vocab_pointer, box)
 TESTC(vocab_pointer, rc)
-TEST(vocab_pointer, arc)
+TESTC(vocab_pointer, arc)
 }

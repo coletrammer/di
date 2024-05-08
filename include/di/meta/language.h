@@ -434,16 +434,34 @@ namespace detail {
     struct LikeHelper<T const, U> : TypeConstant<U const> {};
 
     template<typename T, typename U>
+    struct LikeHelper<T volatile, U> : TypeConstant<U volatile> {};
+
+    template<typename T, typename U>
+    struct LikeHelper<T const volatile, U> : TypeConstant<U const volatile> {};
+
+    template<typename T, typename U>
     struct LikeHelper<T&, U> : TypeConstant<U&> {};
 
     template<typename T, typename U>
     struct LikeHelper<T const&, U> : TypeConstant<U const&> {};
 
     template<typename T, typename U>
+    struct LikeHelper<T volatile&, U> : TypeConstant<U volatile&> {};
+
+    template<typename T, typename U>
+    struct LikeHelper<T const volatile&, U> : TypeConstant<U const volatile&> {};
+
+    template<typename T, typename U>
     struct LikeHelper<T&&, U> : TypeConstant<U&&> {};
 
     template<typename T, typename U>
     struct LikeHelper<T const&&, U> : TypeConstant<U const&&> {};
+
+    template<typename T, typename U>
+    struct LikeHelper<T volatile&&, U> : TypeConstant<U volatile&&> {};
+
+    template<typename T, typename U>
+    struct LikeHelper<T const volatile&&, U> : TypeConstant<U const volatile&&> {};
 }
 
 template<typename T, typename U>

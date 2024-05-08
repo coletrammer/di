@@ -28,7 +28,7 @@ private:
 
 public:
     template<typename = void>
-    auto arc_from_this() {
+    constexpr auto arc_from_this() {
         return Arc<T>(static_cast<T*>(this), adopt_object);
     }
 
@@ -36,12 +36,12 @@ protected:
     IntrusiveRefCount() = default;
 
 private:
-    friend void tag_invoke(types::Tag<intrusive_ptr_increment>, InPlaceType<ArcTag>, T* pointer) {
+    constexpr friend void tag_invoke(types::Tag<intrusive_ptr_increment>, InPlaceType<ArcTag>, T* pointer) {
         auto* base = static_cast<IntrusiveRefCount*>(pointer);
         base->m_ref_count.fetch_add(1, sync::MemoryOrder::Relaxed);
     }
 
-    friend void tag_invoke(types::Tag<intrusive_ptr_decrement>, InPlaceType<ArcTag>, T* pointer) {
+    constexpr friend void tag_invoke(types::Tag<intrusive_ptr_decrement>, InPlaceType<ArcTag>, T* pointer) {
         auto* base = static_cast<IntrusiveRefCount*>(pointer);
         if (base->m_ref_count.fetch_sub(1, sync::MemoryOrder::AcquireRelease) == 1) {
             delete pointer;
@@ -52,6 +52,9 @@ private:
     constexpr static R make(Args&&... args)
     requires(requires { new (std::nothrow) T(util::forward<Args>(args)...); })
     {
+        if consteval {
+            return new T(util::forward<Args>(args)...);
+        }
         auto* result = new (std::nothrow) T(util::forward<Args>(args)...);
         if constexpr (concepts::FallibleAllocator<platform::DefaultAllocator>) {
             if (!result) {

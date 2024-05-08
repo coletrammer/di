@@ -2,6 +2,8 @@
 
 #include <di/meta/core.h>
 #include <di/meta/language.h>
+#include <di/meta/util.h>
+#include <di/sync/atomic_ref.h>
 #include <di/sync/memory_order.h>
 #include <di/types/prelude.h>
 #include <di/util/addressof.h>
@@ -14,14 +16,9 @@ class Atomic {
 private:
     using DeltaType = meta::Conditional<concepts::Pointer<T>, ptrdiff_t, T>;
 
-    // NOTE: the builtin atomic operations treat pointer addition bytewise, so we
-    //       must multiply by the sizeof(*T) if T is a pointer.
-    constexpr DeltaType adjust_delta(DeltaType value) {
-        if constexpr (concepts::Pointer<T>) {
-            return value * sizeof(*m_value);
-        } else {
-            return value;
-        }
+    template<concepts::RemoveCVRefSameAs<Atomic> Self>
+    constexpr auto as_ref(this Self&& self) {
+        return AtomicRef<meta::Like<meta::RemoveReference<Self>, T>>(self.m_value);
     }
 
 public:
@@ -33,138 +30,100 @@ public:
     Atomic& operator=(Atomic const&) = delete;
     Atomic& operator=(Atomic const&) volatile = delete;
 
-    void store(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) {
-        __atomic_store_n(util::addressof(m_value), value, util::to_underlying(order));
+    constexpr void store(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) {
+        return as_ref().store(value, order);
     }
-    void store(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
-        __atomic_store_n(util::addressof(m_value), value, util::to_underlying(order));
-    }
-
-    T load(MemoryOrder order = MemoryOrder::SequentialConsistency) const {
-        return __atomic_load_n(util::addressof(m_value), util::to_underlying(order));
-    }
-    T load(MemoryOrder order = MemoryOrder::SequentialConsistency) const volatile {
-        return __atomic_load_n(util::addressof(m_value), util::to_underlying(order));
+    constexpr void store(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
+        return as_ref().store(value, order);
     }
 
-    T exchange(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) {
-        return __atomic_exchange_n(util::addressof(m_value), value, util::to_underlying(order));
-    }
-    T exchange(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
-        return __atomic_exchange_n(util::addressof(m_value), value, util::to_underlying(order));
+    constexpr T load(MemoryOrder order = MemoryOrder::SequentialConsistency) const { return as_ref().load(order); }
+    constexpr T load(MemoryOrder order = MemoryOrder::SequentialConsistency) const volatile {
+        return as_ref().load(order);
     }
 
-    bool compare_exchange_weak(T& expected, T desired, MemoryOrder success, MemoryOrder failure) {
-        return __atomic_compare_exchange_n(util::addressof(m_value), util::addressof(expected), desired, true,
-                                           util::to_underlying(success), util::to_underlying(failure));
+    constexpr T exchange(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) {
+        return as_ref().exchange(value, order);
     }
-    bool compare_exchange_weak(T& expected, T desired, MemoryOrder success, MemoryOrder failure) volatile {
-        return __atomic_compare_exchange_n(util::addressof(m_value), util::addressof(expected), desired, true,
-                                           util::to_underlying(success), util::to_underlying(failure));
+    constexpr T exchange(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
+        return as_ref().exchange(value, order);
     }
 
-    bool compare_exchange_weak(T& expected, T desired, MemoryOrder order = MemoryOrder::SequentialConsistency) {
-        if (order == MemoryOrder::AcquireRelease || order == MemoryOrder::Release) {
-            return compare_exchange_weak(expected, desired, MemoryOrder::Release, MemoryOrder::Acquire);
-        } else {
-            return compare_exchange_weak(expected, desired, order, order);
-        }
+    constexpr bool compare_exchange_weak(T& expected, T desired, MemoryOrder success, MemoryOrder failure) {
+        return as_ref().compare_exchange_weak(expected, desired, success, failure);
     }
-    bool compare_exchange_weak(T& expected, T desired,
-                               MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
-        if (order == MemoryOrder::AcquireRelease || order == MemoryOrder::Release) {
-            return compare_exchange_weak(expected, desired, MemoryOrder::Release, MemoryOrder::Acquire);
-        } else {
-            return compare_exchange_weak(expected, desired, order, order);
-        }
+    constexpr bool compare_exchange_weak(T& expected, T desired, MemoryOrder success, MemoryOrder failure) volatile {
+        return as_ref().compare_exchange_weak(expected, desired, success, failure);
     }
 
-    bool compare_exchange_strong(T& expected, T desired, MemoryOrder success, MemoryOrder failure) {
-        return __atomic_compare_exchange_n(util::addressof(m_value), util::addressof(expected), desired, false,
-                                           util::to_underlying(success), util::to_underlying(failure));
+    constexpr bool compare_exchange_weak(T& expected, T desired,
+                                         MemoryOrder order = MemoryOrder::SequentialConsistency) {
+        return as_ref().compare_exchange_weak(expected, desired, order);
     }
-    bool compare_exchange_strong(T& expected, T desired, MemoryOrder success, MemoryOrder failure) volatile {
-        return __atomic_compare_exchange_n(util::addressof(m_value), util::addressof(expected), desired, false,
-                                           util::to_underlying(success), util::to_underlying(failure));
-    }
-
-    bool compare_exchange_strong(T& expected, T desired, MemoryOrder order = MemoryOrder::SequentialConsistency) {
-        if (order == MemoryOrder::AcquireRelease || order == MemoryOrder::Release) {
-            return compare_exchange_strong(expected, desired, MemoryOrder::Release, MemoryOrder::Acquire);
-        } else {
-            return compare_exchange_strong(expected, desired, order, order);
-        }
-    }
-    bool compare_exchange_strong(T& expected, T desired,
-                                 MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
-        if (order == MemoryOrder::AcquireRelease || order == MemoryOrder::Release) {
-            return compare_exchange_strong(expected, desired, MemoryOrder::Release, MemoryOrder::Acquire);
-        } else {
-            return compare_exchange_strong(expected, desired, order, order);
-        }
+    constexpr bool compare_exchange_weak(T& expected, T desired,
+                                         MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
+        return as_ref().compare_exchange_weak(expected, desired, order);
     }
 
-#define DI_VOLATILE volatile
+    constexpr bool compare_exchange_strong(T& expected, T desired, MemoryOrder success, MemoryOrder failure) {
+        return as_ref().compare_exchange_strong(expected, desired, success, failure);
+    }
+    constexpr bool compare_exchange_strong(T& expected, T desired, MemoryOrder success, MemoryOrder failure) volatile {
+        return as_ref().compare_exchange_strong(expected, desired, success, failure);
+    }
+
+    constexpr bool compare_exchange_strong(T& expected, T desired,
+                                           MemoryOrder order = MemoryOrder::SequentialConsistency) {
+        return as_ref().compare_exchange_strong(expected, desired, order);
+    }
+    constexpr bool compare_exchange_strong(T& expected, T desired,
+                                           MemoryOrder order = MemoryOrder::SequentialConsistency) volatile {
+        return as_ref().compare_exchange_strong(expected, desired, order);
+    }
 
     constexpr T fetch_add(DeltaType delta, MemoryOrder order = MemoryOrder::SequentialConsistency)
     requires(concepts::Integral<T> || concepts::Pointer<T>)
     {
-        return __atomic_fetch_add(util::addressof(m_value), adjust_delta(delta), util::to_underlying(order));
+        return as_ref().fetch_add(delta, order);
     }
-    constexpr T fetch_add(DeltaType delta, MemoryOrder order = MemoryOrder::SequentialConsistency) DI_VOLATILE
-    requires(concepts::Integral<T> || concepts::Pointer<T>)
-    {
-        return __atomic_fetch_add(util::addressof(m_value), adjust_delta(delta), util::to_underlying(order));
-    }
+    constexpr T fetch_add(DeltaType delta, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile requires(
+        concepts::Integral<T> || concepts::Pointer<T>) { return as_ref().fetch_add(delta, order); }
 
     constexpr T fetch_sub(DeltaType delta, MemoryOrder order = MemoryOrder::SequentialConsistency)
     requires(concepts::Integral<T> || concepts::Pointer<T>)
     {
-        return __atomic_fetch_sub(util::addressof(m_value), adjust_delta(delta), util::to_underlying(order));
+        return as_ref().fetch_sub(delta, order);
     }
-    constexpr T fetch_sub(DeltaType delta, MemoryOrder order = MemoryOrder::SequentialConsistency) DI_VOLATILE
-    requires(concepts::Integral<T> || concepts::Pointer<T>)
+    constexpr T fetch_sub(DeltaType delta, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile requires(
+        concepts::Integral<T> || concepts::Pointer<T>) { return as_ref().fetch_sub(delta, order); }
+
+    constexpr T fetch_and(T value, MemoryOrder order = MemoryOrder::SequentialConsistency)
+    requires(concepts::Integral<T>)
     {
-        return __atomic_fetch_sub(util::addressof(m_value), adjust_delta(delta), util::to_underlying(order));
+        return as_ref().fetch_and(value, order);
+    }
+    constexpr T fetch_and(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile requires(
+        concepts::Integral<T>) { return as_ref().fetch_and(value, order); }
+
+    constexpr T fetch_or(T value, MemoryOrder order = MemoryOrder::SequentialConsistency)
+    requires(concepts::Integral<T>)
+    {
+        return as_ref().fetch_or(value, order);
+    }
+    constexpr T
+    fetch_or(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile requires(concepts::Integral<T>) {
+        return as_ref().fetch_or(value, order);
     }
 
-    T fetch_and(T value, MemoryOrder order = MemoryOrder::SequentialConsistency)
+    constexpr T fetch_xor(T value, MemoryOrder order = MemoryOrder::SequentialConsistency)
     requires(concepts::Integral<T>)
     {
-        return __atomic_fetch_and(util::addressof(m_value), value, util::to_underlying(order));
+        return as_ref().fetch_xor(value, order);
     }
-    T fetch_and(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) DI_VOLATILE
-    requires(concepts::Integral<T>)
-    {
-        return __atomic_fetch_and(util::addressof(m_value), value, util::to_underlying(order));
-    }
+    constexpr T fetch_xor(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) volatile requires(
+        concepts::Integral<T>) { return as_ref().fetch_xor(value, order); }
 
-    T fetch_or(T value, MemoryOrder order = MemoryOrder::SequentialConsistency)
-    requires(concepts::Integral<T>)
-    {
-        return __atomic_fetch_or(util::addressof(m_value), value, util::to_underlying(order));
-    }
-    T fetch_or(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) DI_VOLATILE
-    requires(concepts::Integral<T>)
-    {
-        return __atomic_fetch_or(util::addressof(m_value), value, util::to_underlying(order));
-    }
-
-    T fetch_xor(T value, MemoryOrder order = MemoryOrder::SequentialConsistency)
-    requires(concepts::Integral<T>)
-    {
-        return __atomic_fetch_xor(util::addressof(m_value), value, util::to_underlying(order));
-    }
-    T fetch_xor(T value, MemoryOrder order = MemoryOrder::SequentialConsistency) DI_VOLATILE
-    requires(concepts::Integral<T>)
-    {
-        return __atomic_fetch_xor(util::addressof(m_value), value, util::to_underlying(order));
-    }
-
-#undef DI_VOLATILE
-
-private:
-    T m_value;
+    private : T m_value;
 };
 }
 
