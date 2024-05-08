@@ -197,14 +197,18 @@ struct AnyT {
         constexpr Type& operator=(Type const& other)
         requires(is_copyable)
         {
-            Storage::copy_assign(m_vtable, this, other.m_vtable, util::addressof(other));
+            if (this != di::addressof(other)) {
+                Storage::copy_assign(m_vtable, this, other.m_vtable, util::addressof(other));
+            }
             return *this;
         }
 
         constexpr Type& operator=(Type&& other)
         requires(is_moveable)
         {
-            Storage::move_assign(m_vtable, this, other.m_vtable, util::addressof(other));
+            if (this != di::addressof(other)) {
+                Storage::move_assign(m_vtable, this, other.m_vtable, util::addressof(other));
+            }
             return *this;
         }
 

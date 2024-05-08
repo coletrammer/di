@@ -28,7 +28,7 @@ namespace detail {
         using Type = Method<HybridStorageManage, void(This&, HybridStorage*, HybridStorage*, Alloc&)>;
 
         template<typename T>
-        void operator()(T&, HybridStorage*, HybridStorage*, Alloc&) const;
+        constexpr void operator()(T&, HybridStorage*, HybridStorage*, Alloc&) const;
     };
 
     template<typename HybridStorage, concepts::Allocator Alloc>
@@ -65,7 +65,7 @@ public:
     using CreationResult =
         meta::Conditional<creation_is_fallible(in_place_type<T>), meta::AllocatorResult<Alloc>, void>;
 
-    HybridStorage() {}
+    HybridStorage() = default;
 
     HybridStorage(HybridStorage const&) = delete;
     HybridStorage& operator=(HybridStorage const&) = delete;
@@ -74,6 +74,11 @@ public:
     requires(concepts::ConstructibleFrom<T, Args...> && creation_is_fallible(in_place_type<T>))
     constexpr static void create(InPlaceType<Any>, meta::LikeExpected<CreationResult<T>, Any>& self, InPlaceType<T>,
                                  Args&&... args) {
+        if consteval {
+            self->m_pointer = ::new T(di::forward<Args>(args)...);
+            return;
+        }
+
         auto result = di::allocate_one<T>(self->m_allocator);
         if (!result) {
             self = vocab::Unexpected(util::move(result).error());
@@ -89,6 +94,14 @@ public:
     template<typename T, typename... Args>
     requires(concepts::ConstructibleFrom<T, Args...>)
     constexpr static auto init(HybridStorage* self, InPlaceType<T>, Args&&... args) {
+        if consteval {
+            self->m_pointer = ::new T(di::forward<Args>(args)...);
+            if constexpr (concepts::FallibleAllocator<Alloc> && !creation_is_inline(in_place_type<T>)) {
+                return meta::AllocatorResult<Alloc> {};
+            } else {
+                return;
+            }
+        }
         if constexpr (!creation_is_inline(in_place_type<T>)) {
             return vocab::as_fallible(di::allocate_one<T>(self->m_allocator)) % [&](T* pointer) {
                 util::construct_at(pointer, util::forward<Args>(args)...);
@@ -107,7 +120,7 @@ public:
     {
         if (!vtable.empty()) {
             auto const fp = vtable[Manage {}];
-            fp(dest, dest, source, dest->m_allocator);
+            fp(source, dest, source, dest->m_allocator);
 
             vtable.reset();
         }
@@ -133,7 +146,10 @@ public:
     }
 
     template<typename T>
-    T* down_cast() {
+    constexpr T* down_cast() {
+        if consteval {
+            return static_cast<T*>(m_pointer);
+        }
         if constexpr (!creation_is_inline(in_place_type<T>)) {
             return static_cast<T*>(m_pointer);
         } else {
@@ -142,7 +158,10 @@ public:
     }
 
     template<typename T>
-    T const* down_cast() const {
+    constexpr T const* down_cast() const {
+        if consteval {
+            return static_cast<T const*>(m_pointer);
+        }
         if constexpr (!creation_is_inline(in_place_type<T>)) {
             return static_cast<T const*>(m_pointer);
         } else {
@@ -155,7 +174,7 @@ private:
     void const* address() const { return static_cast<void const*>(util::addressof(m_storage[0])); }
 
     union {
-        void* m_pointer;
+        void* m_pointer { nullptr };
         alignas(inline_align) byte m_storage[inline_size];
     };
     [[no_unique_address]] Alloc m_allocator {};
@@ -164,15 +183,31 @@ private:
 namespace detail {
     template<typename HybridStorage, concepts::Allocator Alloc>
     template<typename T>
-    void HybridStorageManage<HybridStorage, Alloc>::operator()(T& a, HybridStorage* as, HybridStorage* b,
-                                                               Alloc& allocator) const {
-        if constexpr (!HybridStorage::creation_is_inline(in_place_type<T>)) {
-            if (b) {
+    constexpr void HybridStorageManage<HybridStorage, Alloc>::operator()(T&, HybridStorage* as, HybridStorage* bs,
+                                                                         Alloc& allocator) const {
+        if consteval {
+            if (bs) {
                 if constexpr (HybridStorage::storage_category() == StorageCategory::MoveOnly) {
                     // Move from b into a.
-                    as->m_pointer = util::exchange(b->m_pointer, nullptr);
+                    as->m_pointer = util::exchange(bs->m_pointer, nullptr);
                 } else {
-                    DI_ASSERT(!b);
+                    DI_ASSERT(!bs);
+                }
+            } else {
+                // Just destroy a.
+                auto* pointer = util::exchange(as->m_pointer, nullptr);
+                auto* a_value = static_cast<T*>(pointer);
+                ::delete a_value;
+            }
+            return;
+        }
+        if constexpr (!HybridStorage::creation_is_inline(in_place_type<T>)) {
+            if (bs) {
+                if constexpr (HybridStorage::storage_category() == StorageCategory::MoveOnly) {
+                    // Move from b into a.
+                    as->m_pointer = util::exchange(bs->m_pointer, nullptr);
+                } else {
+                    DI_ASSERT(!bs);
                 }
             } else {
                 // Just destroy a.
@@ -182,18 +217,20 @@ namespace detail {
                 di::deallocate_one<T>(allocator, a_value);
             }
         } else {
-            if (b) {
+            if (bs) {
                 if constexpr (HybridStorage::storage_category() == StorageCategory::MoveOnly) {
                     // Move from b into a.
-                    auto* b_value = b->template down_cast<T>();
-                    util::construct_at(util::addressof(a), util::move(*b_value));
+                    auto* b_value = bs->template down_cast<T>();
+                    auto* a_value = as->template down_cast<T>();
+                    util::construct_at(a_value, util::move(*b_value));
                     util::destroy_at(b_value);
                 } else {
-                    DI_ASSERT(!b);
+                    DI_ASSERT(!bs);
                 }
             } else {
                 // Just destroy a.
-                util::destroy_at(util::addressof(a));
+                auto* a_value = as->template down_cast<T>();
+                util::destroy_at(a_value);
             }
         }
     }

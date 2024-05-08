@@ -47,7 +47,7 @@ public:
     ~RefStorage() = default;
 
     template<typename T>
-    T* down_cast() const {
+    constexpr T* down_cast() const {
         if constexpr (concepts::Const<T>) {
             return static_cast<T*>(m_const_pointer);
         } else if constexpr (concepts::Object<T>) {
