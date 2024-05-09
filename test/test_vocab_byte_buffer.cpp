@@ -5,7 +5,7 @@
 #include <dius/test/prelude.h>
 
 namespace vocab_byte_buffer {
-void basic() {
+constexpr void basic() {
     auto backing_store = di::Array { 1_b, 2_b, 3_b };
     auto buffer = di::ByteBuffer(backing_store);
 
@@ -15,7 +15,7 @@ void basic() {
     ASSERT_EQ(slice.span(), *backing_store.subspan(1, 1));
 }
 
-void exclusive() {
+constexpr void exclusive() {
     auto backing_store = di::Vector<byte> {};
     backing_store.resize(10);
 
@@ -32,6 +32,6 @@ void exclusive() {
     ASSERT(buffer.empty());
 }
 
-TEST(vocab_byte_buffer, basic)
-TEST(vocab_byte_buffer, exclusive)
+TESTC(vocab_byte_buffer, basic)
+TESTC(vocab_byte_buffer, exclusive)
 }

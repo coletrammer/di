@@ -80,7 +80,7 @@ public:
 
     template<concepts::Impl<meta::List<AsByteSpan>> T>
     requires(!concepts::DerivedFrom<T, ByteBufferImpl> && concepts::FallibleAllocator<Alloc>)
-    static auto create(T&& value) -> meta::LikeExpected<meta::AllocatorResult<Alloc>, ByteBufferImpl> {
+    constexpr static auto create(T&& value) -> meta::LikeExpected<meta::AllocatorResult<Alloc>, ByteBufferImpl> {
         auto data = as_byte_span(value);
         auto store = DI_TRY(Store::create(di::forward<T>(value)));
         return ByteBufferImpl(data, di::move(store));
@@ -90,10 +90,10 @@ public:
 
     template<concepts::Impl<meta::List<AsByteSpan>> T>
     requires(!concepts::DerivedFrom<T, ByteBufferImpl> && !concepts::FallibleAllocator<Alloc>)
-    explicit ByteBufferImpl(T&& value) : m_data(as_byte_span(value)), m_store(di::forward<T>(value)) {}
+    constexpr explicit ByteBufferImpl(T&& value) : m_data(as_byte_span(value)), m_store(di::forward<T>(value)) {}
 
-    explicit ByteBufferImpl(Span<byte const> data, Store&& store) : m_data(data), m_store(di::move(store)) {}
-    explicit ByteBufferImpl(Span<byte const> data, Store const& store) : m_data(data), m_store(store) {}
+    constexpr explicit ByteBufferImpl(Span<byte const> data, Store&& store) : m_data(data), m_store(di::move(store)) {}
+    constexpr explicit ByteBufferImpl(Span<byte const> data, Store const& store) : m_data(data), m_store(store) {}
 
     constexpr auto data() const -> byte const* { return m_data.data(); }
     constexpr auto size() const -> usize { return m_data.size(); }
@@ -102,25 +102,25 @@ public:
 
     constexpr auto store() const& -> Store const& { return m_store; }
 
-    auto first(usize count) const -> Optional<ByteBufferImpl> {
+    constexpr auto first(usize count) const -> Optional<ByteBufferImpl> {
         return span().first(count) % [&](Span<byte const> data) {
             return ByteBufferImpl(data, m_store);
         };
     }
 
-    auto last(usize count) const -> Optional<ByteBufferImpl> {
+    constexpr auto last(usize count) const -> Optional<ByteBufferImpl> {
         return span().last(count) % [&](Span<byte const> data) {
             return ByteBufferImpl(data, m_store);
         };
     }
 
-    auto slice(usize offset) const -> Optional<ByteBufferImpl> {
+    constexpr auto slice(usize offset) const -> Optional<ByteBufferImpl> {
         return span().subspan(offset) % [&](Span<byte const> data) {
             return ByteBufferImpl(data, m_store);
         };
     }
 
-    auto slice(usize offset, usize count) const -> Optional<ByteBufferImpl> {
+    constexpr auto slice(usize offset, usize count) const -> Optional<ByteBufferImpl> {
         return span().subspan(offset, count) % [&](Span<byte const> data) {
             return ByteBufferImpl(data, m_store);
         };
@@ -139,7 +139,8 @@ public:
 
     template<concepts::Impl<meta::List<AsWritableByteSpan>> T>
     requires(!concepts::DerivedFrom<T, ExclusiveByteBufferImpl> && concepts::FallibleAllocator<Alloc>)
-    static auto create(T&& value) -> meta::LikeExpected<meta::AllocatorResult<Alloc>, ExclusiveByteBufferImpl> {
+    constexpr static auto
+    create(T&& value) -> meta::LikeExpected<meta::AllocatorResult<Alloc>, ExclusiveByteBufferImpl> {
         auto data = as_writable_byte_span(value);
         auto store = DI_TRY(Store::create(di::forward<T>(value)));
         return ExclusiveByteBufferImpl(data, di::move(store));
@@ -149,18 +150,19 @@ public:
 
     template<concepts::Impl<meta::List<AsWritableByteSpan>> T>
     requires(!concepts::DerivedFrom<T, ExclusiveByteBufferImpl> && !concepts::FallibleAllocator<Alloc>)
-    explicit ExclusiveByteBufferImpl(T&& value)
+    constexpr explicit ExclusiveByteBufferImpl(T&& value)
         : m_data(as_writable_byte_span(value)), m_store(di::forward<T>(value)) {}
 
-    explicit ExclusiveByteBufferImpl(Span<byte> data, Store&& store) : m_data(data), m_store(di::move(store)) {}
+    constexpr explicit ExclusiveByteBufferImpl(Span<byte> data, Store&& store)
+        : m_data(data), m_store(di::move(store)) {}
 
-    ExclusiveByteBufferImpl(ExclusiveByteBufferImpl const&) = delete;
-    ExclusiveByteBufferImpl(ExclusiveByteBufferImpl&& other) : m_store(di::move(other.m_store)) {
+    constexpr ExclusiveByteBufferImpl(ExclusiveByteBufferImpl const&) = delete;
+    constexpr ExclusiveByteBufferImpl(ExclusiveByteBufferImpl&& other) : m_store(di::move(other.m_store)) {
         m_data = di::exchange(other.m_data, Span<byte> {});
     }
 
-    ExclusiveByteBufferImpl& operator=(ExclusiveByteBufferImpl const&) = delete;
-    ExclusiveByteBufferImpl& operator=(ExclusiveByteBufferImpl&& other) {
+    constexpr ExclusiveByteBufferImpl& operator=(ExclusiveByteBufferImpl const&) = delete;
+    constexpr ExclusiveByteBufferImpl& operator=(ExclusiveByteBufferImpl&& other) {
         m_store = di::move(other.m_store);
         m_data = di::exchange(other.m_data, Span<byte> {});
     }
@@ -182,12 +184,12 @@ public:
         m_data = m_data.subspan(offset, count).value_or(Span<byte> {});
     }
 
-    auto share() && -> ByteBuffer {
+    constexpr auto share() && -> ByteBuffer {
         auto data = di::exchange(m_data, Span<byte> {});
         return ByteBuffer(data, di::move(m_store));
     }
 
-    operator ByteBuffer() && { return share(); }
+    constexpr operator ByteBuffer() && { return share(); }
 
 private:
     Span<byte> m_data;

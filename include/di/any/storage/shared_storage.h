@@ -26,43 +26,37 @@
 
 namespace di::any {
 namespace detail {
+    enum class OpForConsteval {
+        Destroy,
+        RefInc,
+        RefDec,
+    };
+
     template<typename SharedStorage, concepts::Allocator Alloc>
     struct SharedStorageManage {
-        using Type = Method<SharedStorageManage, void(This&, Alloc&)>;
+        using Type = Method<SharedStorageManage, void(This&, SharedStorage*, Alloc&, OpForConsteval)>;
 
         template<typename T>
-        void operator()(T&, Alloc&) const;
+        constexpr void operator()(T&, SharedStorage*, Alloc&, OpForConsteval) const;
     };
 
     template<typename SharedStorage, concepts::Allocator Alloc>
     constexpr inline auto shared_storage_manage = SharedStorageManage<SharedStorage, Alloc> {};
 
+    struct RefCount {
+        sync::Atomic<usize> ref_count { 1 };
+    };
+
     template<typename T>
-    struct ObjectWithRefCount : util::Immovable {
-    public:
+    struct ObjectWithRefCount : RefCount {
         ObjectWithRefCount(ObjectWithRefCount const&) = delete;
         ObjectWithRefCount(ObjectWithRefCount&&) = delete;
 
         template<typename... Args>
-        constexpr ObjectWithRefCount(Args&&... args) : ref_count(1), object(util::forward<Args>(args)...) {}
+        constexpr ObjectWithRefCount(Args&&... args) : object(util::forward<Args>(args)...) {}
 
-        // Shared storage internally stores a pointer directly to the underlying T object. To access the reference
-        // count, shared storage looks directly in front of the object. To ensure this layout is chosen by the compiler,
-        // we must pad this object if the underlying T is over-aligned.
-        constexpr static usize alignment = container::max(alignof(T), alignof(sync::Atomic<usize>));
-        constexpr static usize padding_size =
-            alignment <= alignof(sync::Atomic<usize>) ? 0 : alignment - sizeof(sync::Atomic<usize>);
+        constexpr T* to_object_pointer() { return util::addressof(object); }
 
-        static ObjectWithRefCount* from_object_pointer(T* object) {
-            auto* byte_pointer = reinterpret_cast<byte*>(object);
-            byte_pointer -= padding_size + sizeof(sync::Atomic<usize>);
-            return reinterpret_cast<ObjectWithRefCount*>(byte_pointer);
-        }
-
-        T* to_object_pointer() { return util::addressof(object); }
-
-        [[no_unique_address]] Array<byte, padding_size> padding;
-        sync::Atomic<usize> ref_count;
         T object;
     };
 }
@@ -101,7 +95,7 @@ public:
         auto* pointer = *result;
         util::construct_at(pointer, util::forward<Args>(args)...);
 
-        self->m_pointer = pointer->to_object_pointer();
+        self->m_pointer = pointer;
     }
 
     template<typename T, typename... Args>
@@ -110,21 +104,26 @@ public:
         using Store = detail::ObjectWithRefCount<T>;
         return vocab::as_fallible(di::allocate_one<Store>(self->m_allocator)) % [&](Store* pointer) {
             util::construct_at(pointer, util::forward<Args>(args)...);
-            self->m_pointer = pointer->to_object_pointer();
+            self->m_pointer = pointer;
         } | vocab::try_infallible;
     }
 
-    constexpr SharedStorage() {}
+    SharedStorage() = default;
 
     SharedStorage(SharedStorage const&) = default;
     SharedStorage& operator=(SharedStorage const&) = default;
 
     ~SharedStorage() = default;
 
-    constexpr static void copy_construct(concepts::VTableFor<Interface> auto const&, SharedStorage* dest,
+    constexpr static void copy_construct(concepts::VTableFor<Interface> auto const& vtable, SharedStorage* dest,
                                          SharedStorage const* source) {
         if ((dest->m_pointer = source->m_pointer)) {
-            dest->fetch_add_ref_count();
+            if consteval {
+                auto const fp = vtable[Manage {}];
+                fp(dest, dest, dest->m_allocator, detail::OpForConsteval::RefInc);
+            } else {
+                dest->fetch_add_ref_count();
+            }
         }
     }
 
@@ -152,35 +151,39 @@ public:
 
     constexpr static void destroy(concepts::VTableFor<Interface> auto& vtable, SharedStorage* self) {
         if (self->m_pointer) {
-            if (self->fetch_sub_ref_count() == 1) {
-                auto const fp = vtable[Manage {}];
-                fp(self, self->m_allocator);
+            auto const fp = vtable[Manage {}];
+            if consteval {
+                fp(self, self, self->m_allocator, detail::OpForConsteval::RefDec);
+            } else {
+                if (self->fetch_sub_ref_count() == 1) {
+                    fp(self, self, self->m_allocator, detail::OpForConsteval::Destroy);
+                }
             }
             self->m_pointer = nullptr;
         }
     }
 
     template<typename T>
-    T* down_cast() {
-        return static_cast<T*>(m_pointer);
+    constexpr T* down_cast() {
+        return static_cast<detail::ObjectWithRefCount<T>*>(m_pointer)->to_object_pointer();
     }
 
     template<typename T>
-    T const* down_cast() const {
-        return static_cast<T const*>(m_pointer);
+    constexpr T const* down_cast() const {
+        return static_cast<detail::ObjectWithRefCount<T> const*>(m_pointer)->to_object_pointer();
     }
 
 private:
     constexpr explicit SharedStorage(void* pointer) : m_pointer(pointer) {}
 
-    usize fetch_sub_ref_count() {
-        auto* ref_count = static_cast<sync::Atomic<usize>*>(m_pointer) - 1;
-        return ref_count->fetch_sub(1, sync::MemoryOrder::Relaxed);
+    constexpr usize fetch_sub_ref_count() {
+        auto& ref_count = static_cast<detail::RefCount*>(m_pointer)->ref_count;
+        return ref_count.fetch_sub(1, sync::MemoryOrder::Relaxed);
     }
 
-    usize fetch_add_ref_count() {
-        auto* ref_count = static_cast<sync::Atomic<usize>*>(m_pointer) - 1;
-        return ref_count->fetch_add(1, sync::MemoryOrder::AcquireRelease);
+    constexpr usize fetch_add_ref_count() {
+        auto& ref_count = static_cast<detail::RefCount*>(m_pointer)->ref_count;
+        return ref_count.fetch_add(1, sync::MemoryOrder::AcquireRelease);
     }
 
     void* m_pointer { nullptr };
@@ -190,8 +193,24 @@ private:
 namespace detail {
     template<typename SharedStorage, concepts::Allocator Alloc>
     template<typename T>
-    void SharedStorageManage<SharedStorage, Alloc>::operator()(T& object, Alloc& allocator) const {
-        auto* pointer = detail::ObjectWithRefCount<T>::from_object_pointer(util::addressof(object));
+    constexpr void SharedStorageManage<SharedStorage, Alloc>::operator()(T&, SharedStorage* storage, Alloc& allocator,
+                                                                         OpForConsteval op) const {
+        auto* pointer = static_cast<ObjectWithRefCount<T>*>(storage->m_pointer);
+        if consteval {
+            switch (op) {
+                case OpForConsteval::RefInc:
+                    pointer->ref_count.fetch_add(1);
+                    return;
+                case OpForConsteval::RefDec:
+                    if (pointer->ref_count.fetch_sub(1) == 1) {
+                        break;
+                    }
+                    return;
+                default:
+                    return;
+            }
+        }
+
         util::destroy_at(pointer);
         di::deallocate_one<detail::ObjectWithRefCount<T>>(allocator, pointer);
     }
