@@ -47,7 +47,7 @@ constexpr void function_ref_basic() {
     static_assert(di::SameAs<decltype(j), di::FunctionRef<i32(i32)> const>);
 }
 
-static void function_basic() {
+constexpr void function_basic() {
     auto f = di::Function<i32(i32)> { [](i32 x) -> i32 {
         return x + 3;
     } };
@@ -66,7 +66,7 @@ static void function_basic() {
     ASSERT_EQ(g(1), 4);
 
     struct X {
-        i32 h(i32 x) const { return x + y; }
+        constexpr i32 h(i32 x) const { return x + y; }
 
         i32 y {};
     };
@@ -87,5 +87,5 @@ static void function_basic() {
 }
 
 TESTC(function_container, function_ref_basic)
-TEST(function_container, function_basic)
+TESTC(function_container, function_basic)
 }
