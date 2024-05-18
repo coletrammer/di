@@ -88,7 +88,7 @@ namespace from_container_ns {
 
     template<typename Con, typename Rec, typename R>
     struct NextOperationStateT {
-        struct Type {
+        struct Type : di::Immovable {
         public:
             explicit Type(Data<Con, Rec>* data, R receiver) : m_data(data), m_receiver(util::move(receiver)) {}
 

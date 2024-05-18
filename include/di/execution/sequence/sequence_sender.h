@@ -29,6 +29,7 @@
 #include <di/sync/concepts/stoppable_token.h>
 #include <di/sync/concepts/unstoppable_token.h>
 #include <di/util/declval.h>
+#include <di/util/immovable.h>
 #include <di/util/move.h>
 
 /// @file sequence_sender.h
@@ -105,7 +106,7 @@ concept SequenceSenderIn = SenderIn<Send, Env> && SequenceSender<Send>;
 }
 
 namespace di::execution::dummy_ns {
-struct DummyOperationState {
+struct DummyOperationState : di::Immovable {
     friend void tag_invoke(types::Tag<execution::start>, DummyOperationState&) {}
 };
 

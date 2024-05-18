@@ -60,6 +60,16 @@ namespace async_net_ns {
             return tag_invoke(*this, di::forward<Socket>(socket), di::forward<ExtraArgs>(extra_args)...);
         }
     };
+
+    struct AsyncShutdown {
+        template<typename Socket, typename... ExtraArgs>
+        requires(concepts::TagInvocable<AsyncShutdown, Socket, ExtraArgs...>)
+        constexpr concepts::SenderOf<SetValue()> auto operator()(Socket&& socket, ExtraArgs&&... extra_args) const {
+            static_assert(concepts::SenderOf<meta::TagInvokeResult<AsyncShutdown, Socket, ExtraArgs...>, SetValue()>,
+                          "async_shutdown() customizations must return a sender of void.");
+            return tag_invoke(*this, di::forward<Socket>(socket), di::forward<ExtraArgs>(extra_args)...);
+        }
+    };
 }
 
 constexpr inline auto async_make_socket = async_net_ns::AsyncMakeSocket {};
@@ -67,4 +77,5 @@ constexpr inline auto async_accept = async_net_ns::AsyncAccept {};
 constexpr inline auto async_bind = async_net_ns::AsyncBind {};
 constexpr inline auto async_connect = async_net_ns::AsyncConnect {};
 constexpr inline auto async_listen = async_net_ns::AsyncListen {};
+constexpr inline auto async_shutdown = async_net_ns::AsyncListen {};
 }

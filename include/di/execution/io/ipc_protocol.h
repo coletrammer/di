@@ -18,7 +18,7 @@
 
 namespace di::concepts {
 template<typename T>
-concept MessageWithReply = requires { typename T::Reply; };
+concept MessageWithReply = requires { typename T::Reply; } && !di::SameAs<T, typename T::Reply>;
 }
 
 namespace di::meta {
@@ -109,7 +109,7 @@ constexpr inline auto send = send_ns::Function {};
 
 namespace ipc {
     template<concepts::AsyncReadable Reader>
-    struct Receiver : NamedArgument<InPlaceTemplate<Receiver>, Reader> {};
+    struct Receiver : NamedArgument<InPlaceTemplate<Receiver>, di::meta::RemoveReference<Reader>> {};
 
     template<typename Reader>
     Receiver(Reader&&) -> Receiver<Reader>;
@@ -118,14 +118,14 @@ namespace ipc {
     struct Transmitter : NamedArgument<InPlaceTemplate<Transmitter>, Writer> {};
 
     template<typename Writer>
-    Transmitter(Writer&&) -> Transmitter<Writer>;
+    Transmitter(Writer&&) -> Transmitter<di::meta::RemoveReference<Writer>>;
 
     template<concepts::AsyncReadable RW>
     requires(concepts::AsyncWritable<RW>)
     struct ReceiverTransmitter : NamedArgument<InPlaceTemplate<ReceiverTransmitter>, RW> {};
 
     template<typename RW>
-    ReceiverTransmitter(RW&&) -> ReceiverTransmitter<RW>;
+    ReceiverTransmitter(RW&&) -> ReceiverTransmitter<di::meta::RemoveReference<RW>>;
 
     template<concepts::MoveConstructible F>
     struct Transmit : NamedArgument<InPlaceTemplate<Transmit>, F> {};

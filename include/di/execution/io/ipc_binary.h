@@ -490,7 +490,7 @@ namespace ipc_binary_ns {
     template<typename Proto, typename Read, typename Write, typename TxFun, typename RxFun, typename Alloc,
              typename ClientOrServer, typename Rec>
     struct OperationStateT {
-        struct Type {
+        struct Type : di::Immovable {
         public:
             using ItemToken = ConnectionToken<Proto, Read, Write, Alloc, ClientOrServer>;
             using TxSender = meta::InvokeResult<TxFun, ItemToken>;

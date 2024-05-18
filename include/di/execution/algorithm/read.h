@@ -12,6 +12,7 @@
 #include <di/execution/query/get_stop_token.h>
 #include <di/function/invoke.h>
 #include <di/meta/util.h>
+#include <di/util/immovable.h>
 
 namespace di::execution {
 namespace read_ns {
@@ -22,13 +23,16 @@ namespace read_ns {
 
             template<typename Receiver>
             struct OperationStateT {
-                struct Type {
-                    Receiver receiver;
+                class Type : di::Immovable {
+                public:
+                    constexpr explicit Type(Receiver receiver) : m_receiver(di::move(receiver)) {}
 
                 private:
                     friend void tag_invoke(types::Tag<execution::start>, Type& self) {
-                        set_value(util::move(self.receiver), auto(Tag {}(get_env(self.receiver))));
+                        set_value(util::move(self).m_receiver, auto(Tag {}(get_env(self.m_receiver))));
                     }
+
+                    Receiver m_receiver;
                 };
             };
 

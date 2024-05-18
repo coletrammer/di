@@ -11,16 +11,21 @@
 #include <di/execution/types/empty_env.h>
 #include <di/function/tag_invoke.h>
 #include <di/meta/core.h>
+#include <di/util/immovable.h>
 #include <di/util/move.h>
 
 namespace di::execution {
 namespace empty_sequence_ns {
     template<typename Rec>
     struct OperationStateT {
-        struct Type {
-            [[no_unique_address]] Rec receiver;
+        struct Type : di::Immovable {
+        public:
+            constexpr explicit Type(Rec receiver) : m_receiver(di::move(receiver)) {}
 
-            friend void tag_invoke(types::Tag<start>, Type& self) { set_value(util::move(self.receiver)); }
+            friend void tag_invoke(types::Tag<start>, Type& self) { set_value(util::move(self.m_receiver)); }
+
+        private:
+            [[no_unique_address]] Rec m_receiver;
         };
     };
 

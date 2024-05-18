@@ -81,6 +81,9 @@ struct ServerMessage {
 
 using MyProtocol = di::Protocol<di::meta::List<ClientMessage1, ClientMessage2>, di::meta::List<ServerMessage>>;
 
+static_assert(di::concepts::MessageWithReply<ClientMessage2>);
+static_assert(!di::concepts::MessageWithReply<ClientMessage2::Reply>);
+
 static void send() {
     auto read = AsyncReader {};
     auto write = AsyncWriter {};
