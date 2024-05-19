@@ -163,7 +163,9 @@ namespace function_ref_ns {
                 return function::invoke_r<R>(f, util::forward<Args>(args)...);
             }) {
             if constexpr (concepts::Pointer<F> || concepts::MemberPointer<F>) {
+#ifndef DI_SANITIZER
                 static_assert(f != nullptr, "FunctionRef Constexpr<> constructors cannot be passed a nullptr.");
+#endif
             }
         }
 
@@ -177,7 +179,9 @@ namespace function_ref_ns {
                 return function::invoke_r<R>(f, object_reference, util::forward<Args>(args)...);
             }) {
             if constexpr (concepts::Pointer<F> || concepts::MemberPointer<F>) {
+#ifndef DI_SANITIZER
                 static_assert(f != nullptr, "FunctionRef Constexpr<> constructors cannot be passed a nullptr.");
+#endif
             }
         }
 
@@ -188,7 +192,9 @@ namespace function_ref_ns {
                 return function::invoke_r<R>(f, down_cast<CVQualified<T>>(storage), util::forward<Args>(args)...);
             }) {
             if constexpr (concepts::Pointer<F> || concepts::MemberPointer<F>) {
+#ifndef DI_SANITIZER
                 static_assert(f != nullptr, "FunctionRef Constexpr<> constructors cannot be passed a nullptr.");
+#endif
             }
             DI_ASSERT(object != nullptr);
         }

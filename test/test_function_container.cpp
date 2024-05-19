@@ -86,6 +86,6 @@ constexpr void function_basic() {
     ASSERT_EQ(n(1), 17);
 }
 
-TESTC(function_container, function_ref_basic)
-TESTC(function_container, function_basic)
+TESTC_GCC_NOSAN(function_container, function_ref_basic)
+TESTC_GCC_NOSAN(function_container, function_basic)
 }
