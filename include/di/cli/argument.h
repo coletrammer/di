@@ -52,8 +52,8 @@ public:
     Argument() = default;
 
     template<auto member>
-    constexpr explicit Argument(Constexpr<member>, Optional<StringView> argument_name = {},
-                                Optional<StringView> description = {}, bool required = false)
+    constexpr explicit Argument(Constexpr<member>, StringView argument_name = {}, StringView description = {},
+                                bool required = false)
         : m_parse(concrete_parse<member>)
         , m_argument_name(argument_name)
         , m_description(description)
@@ -74,10 +74,27 @@ public:
 
     constexpr auto required_argument_count() const -> usize { return required() ? 1 : 0; }
 
+    constexpr auto display_name() const {
+        auto result = di::String {};
+        if (!required()) {
+            result.push_back(U'[');
+        }
+        result += m_argument_name;
+        if (variadic()) {
+            result.push_back(U'.');
+            result.push_back(U'.');
+            result.push_back(U'.');
+        }
+        if (!required()) {
+            result.push_back(U']');
+        }
+        return result;
+    }
+
 private:
     Parse m_parse { nullptr };
-    Optional<StringView> m_argument_name;
-    Optional<StringView> m_description;
+    StringView m_argument_name;
+    StringView m_description;
     bool m_required { false };
     bool m_variadic { false };
 };

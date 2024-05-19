@@ -8,8 +8,8 @@ struct Args {
 
     constexpr static auto get_cli_parser() {
         return di::cli_parser<Args>("test"_sv, "Long Description"_sv)
-            .flag<&Args::enable>('e', "enable"_tsv)
-            .flag<&Args::input>('i', "input"_tsv);
+            .option<&Args::enable>('e', "enable"_tsv, "D1"_sv)
+            .option<&Args::input>('i', "input"_tsv, "D2"_sv);
     }
 };
 
@@ -65,7 +65,7 @@ struct Args2 {
 
     constexpr static auto get_cli_parser() {
         return di::cli_parser<Args2>("test"_sv, "Long Description"_sv)
-            .flag<&Args2::enable>('e', "enable"_tsv)
+            .option<&Args2::enable>('e', "enable"_tsv, "D1"_sv)
             .argument<&Args2::input>("FILE"_sv, "Input file"_sv);
     }
 };
@@ -87,7 +87,7 @@ struct Args3 {
 
     constexpr static auto get_cli_parser() {
         return di::cli_parser<Args3>("test"_sv, "Long Description"_sv)
-            .flag<&Args3::enable>('e', "enable"_tsv)
+            .option<&Args3::enable>('e', "enable"_tsv, "D1"_sv)
             .argument<&Args3::inputs>("FILES"_sv, "Input files"_sv);
     }
 };
@@ -105,7 +105,50 @@ constexpr void variadic_arguments() {
     }
 }
 
+constexpr void help() {
+    auto h1 = di::get_cli_parser<Args>().help_string();
+    ASSERT_EQ(h1, R"~(NAME:
+  test: Long Description
+
+USAGE:
+  test [OPTIONS]
+
+OPTIONS:
+  -e, --enable: D1
+  -i, --input <VALUE>: D2
+)~"_sv);
+
+    auto h2 = di::get_cli_parser<Args2>().help_string();
+    ASSERT_EQ(h2, R"~(NAME:
+  test: Long Description
+
+USAGE:
+  test [OPTIONS] [FILE]
+
+ARGUMENTS:
+  [FILE]: Input file
+
+OPTIONS:
+  -e, --enable: D1
+)~"_sv);
+
+    auto h3 = di::get_cli_parser<Args3>().help_string();
+    ASSERT_EQ(h3, R"~(NAME:
+  test: Long Description
+
+USAGE:
+  test [OPTIONS] [FILES...]
+
+ARGUMENTS:
+  [FILES...]: Input files
+
+OPTIONS:
+  -e, --enable: D1
+)~"_sv);
+}
+
 TESTC_GCC_NOSAN(cli, basic);
 TESTC_GCC_NOSAN(cli, arguments)
 TESTC_GCC_NOSAN(cli, variadic_arguments)
+TESTC_GCC_NOSAN(cli, help)
 }

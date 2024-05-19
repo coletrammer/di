@@ -40,13 +40,14 @@ public:
 
     template<auto member>
     constexpr explicit Option(Constexpr<member>, Optional<char> short_name = {},
-                              Optional<TransparentStringView> long_name = {}, Optional<StringView> description = {},
-                              bool required = false)
+                              Optional<TransparentStringView> long_name = {}, StringView description = {},
+                              bool required = false, bool always_succeeds = false)
         : m_parse(concrete_parse<member>)
         , m_short_name(short_name)
         , m_long_name(long_name)
         , m_description(description)
         , m_required(required)
+        , m_always_succeeds(always_succeeds)
         , m_boolean(di::SameAs<meta::MemberPointerValue<decltype(member)>, bool>) {}
 
     constexpr auto parse(void* base, Optional<TransparentStringView> input) const {
@@ -58,13 +59,40 @@ public:
     constexpr auto description() const { return m_description; }
     constexpr auto required() const { return m_required; }
     constexpr auto boolean() const { return m_boolean; }
+    constexpr auto always_succeeds() const { return m_always_succeeds; }
+
+    constexpr auto long_display_name() const {
+        auto result = di::TransparentString {};
+        result += di::single('-');
+        result += di::single('-');
+        result += m_long_name.value();
+        return result;
+    }
+
+    constexpr auto short_display_name() const {
+        auto result = di::TransparentString {};
+        result += di::single('-');
+        result += di::single(m_short_name.value());
+        return result;
+    }
+
+    constexpr auto display_name() const {
+        if (long_name()) {
+            return long_display_name();
+        } else if (short_name()) {
+            return short_display_name();
+        } else {
+            return di::TransparentString {};
+        }
+    }
 
 private:
     Parse m_parse { nullptr };
     Optional<char> m_short_name;
     Optional<TransparentStringView> m_long_name;
-    Optional<StringView> m_description;
+    StringView m_description;
     bool m_required { false };
+    bool m_always_succeeds { false };
     bool m_boolean { false };
 };
 }

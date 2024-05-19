@@ -1,15 +1,25 @@
 #pragma once
 
+#include <di/any/concepts/impl.h>
 #include <di/cli/argument.h>
 #include <di/cli/option.h>
+#include <di/container/algorithm/any_of.h>
 #include <di/container/algorithm/prelude.h>
 #include <di/container/algorithm/rotate.h>
 #include <di/container/algorithm/sum.h>
 #include <di/container/string/string_view.h>
+#include <di/container/string/utf8_encoding.h>
 #include <di/container/vector/static_vector.h>
+#include <di/format/style.h>
 #include <di/function/monad/monad_try.h>
+#include <di/function/not_fn.h>
 #include <di/function/prelude.h>
+#include <di/io/interface/writer.h>
+#include <di/io/string_writer.h>
+#include <di/io/writer_print.h>
+#include <di/io/writer_println.h>
 #include <di/meta/constexpr.h>
+#include <di/meta/language.h>
 #include <di/vocab/optional/lift_bool.h>
 
 namespace di::cli {
@@ -21,24 +31,33 @@ namespace detail {
         constexpr static auto max_arguments = 100zu;
 
     public:
-        constexpr explicit Parser(Optional<StringView> app_name, Optional<StringView> description)
+        constexpr explicit Parser(StringView app_name, StringView description)
             : m_app_name(app_name), m_description(description) {}
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
                  concepts::SameAs<Base, meta::MemberPointerClass<decltype(member)>>)
-        constexpr auto flag(Optional<char> short_name, Optional<TransparentStringView> long_name = {},
-                            Optional<StringView> description = {}, bool required = false) && {
-            auto new_option = Option { c_<member>, short_name, long_name, description, required };
+        constexpr auto option(Optional<char> short_name, Optional<TransparentStringView> long_name,
+                              StringView description, bool required = false, bool always_succeed = false) && {
+            auto new_option = Option { c_<member>, short_name, long_name, description, required, always_succeed };
             DI_ASSERT(m_options.push_back(new_option));
             return di::move(*this);
+        }
+
+        constexpr auto help(Optional<char> short_name = {}, Optional<TransparentStringView> long_name = "help"_tsv,
+                            StringView description = "Print help message"_sv) {
+            static_assert(
+                requires { c_<&Base::help>; },
+                "A help message requires the argument type to have a boolean help member.");
+            static_assert(SameAs<meta::MemberPointerValue<decltype(&Base::help)>, bool>,
+                          "A help message requires the argument type to have a boolean help member.");
+            return di::move(*this).template option<&Base::help>(short_name, long_name, description, false, true);
         }
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
                  concepts::SameAs<Base, meta::MemberPointerClass<decltype(member)>>)
-        constexpr auto argument(Optional<StringView> name = {}, Optional<StringView> description = {},
-                                bool required = false) && {
+        constexpr auto argument(StringView name, StringView description, bool required = false) && {
             auto new_argument = Argument { c_<member>, name, description, required };
             DI_ASSERT(m_arguments.push_back(new_argument));
             return di::move(*this);
@@ -89,6 +108,9 @@ namespace detail {
                         // Parse boolean flag.
                         if (option_boolean(*index)) {
                             DI_TRY(option_parse(*index, seen_arguments, &result, {}));
+                            if (option_always_succeeds(*index)) {
+                                return result;
+                            }
                             continue;
                         }
 
@@ -96,6 +118,9 @@ namespace detail {
                         auto value_view = arg.substr(arg.begin() + char_index + 1);
                         if (!value_view.empty()) {
                             DI_TRY(option_parse(*index, seen_arguments, &result, value_view));
+                            if (option_always_succeeds(*index)) {
+                                return result;
+                            }
                             break;
                         }
 
@@ -106,6 +131,9 @@ namespace detail {
 
                         // Use the next argument as the value.
                         DI_TRY(option_parse(*index, seen_arguments, &result, args[arg_index + 1]));
+                        if (option_always_succeeds(*index)) {
+                            return result;
+                        }
                         send_arg_to_back(arg_index);
                         i++;
                     }
@@ -132,6 +160,9 @@ namespace detail {
                         return Unexpected(BasicError::InvalidArgument);
                     }
                     DI_TRY(option_parse(*index, seen_arguments, &result, {}));
+                    if (option_always_succeeds(*index)) {
+                        return result;
+                    }
                     send_arg_to_back(arg_index);
                     continue;
                 }
@@ -150,6 +181,9 @@ namespace detail {
                 }
 
                 DI_TRY(option_parse(*index, seen_arguments, &result, value));
+                if (option_always_succeeds(*index)) {
+                    return result;
+                }
             }
 
             // Validate all required arguments were processed.
@@ -175,10 +209,80 @@ namespace detail {
             return result;
         }
 
+        template<Impl<io::Writer> Writer>
+        constexpr void write_help(Writer& writer) const {
+            using Enc = container::string::Utf8Encoding;
+
+            constexpr auto header_effect = di::FormatEffect::Bold | di::FormatColor::Yellow;
+            constexpr auto program_effect = di::FormatEffect::Bold;
+            constexpr auto option_effect = di::FormatColor::Cyan;
+            constexpr auto option_value_effect = di::FormatColor::Green;
+            constexpr auto argument_effect = di::FormatColor::Green;
+
+            io::writer_println<Enc>(writer, "{}"_sv, di::Styled("NAME:"_sv, header_effect));
+            io::writer_println<Enc>(writer, "  {}: {}"_sv, di::Styled(m_app_name, program_effect), m_description);
+
+            io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("USAGE:"_sv, header_effect));
+            io::writer_print<Enc>(writer, "  {}"_sv, di::Styled(m_app_name, program_effect));
+            if (di::any_of(m_options, di::not_fn(&Option::required))) {
+                io::writer_print<Enc>(writer, " [OPTIONS]"_sv);
+            }
+            for (auto const& option : m_options) {
+                if (option.required()) {
+                    io::writer_print<Enc>(writer, " {}"_sv, di::Styled(option.display_name(), option_effect));
+
+                    if (!option.boolean()) {
+                        io::writer_print<Enc>(writer, " {}"_sv, di::Styled("<VALUE>"_sv, option_value_effect));
+                    }
+                }
+            }
+            for (auto const& argument : m_arguments) {
+                io::writer_print<Enc>(writer, " {}"_sv, di::Styled(argument.display_name(), argument_effect));
+            }
+            io::writer_println<Enc>(writer, ""_sv);
+
+            if (!m_arguments.empty()) {
+                io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("ARGUMENTS:"_sv, header_effect));
+                for (auto const& argument : m_arguments) {
+                    io::writer_println<Enc>(writer, "  {}: {}"_sv, di::Styled(argument.display_name(), argument_effect),
+                                            argument.description());
+                }
+            }
+
+            if (!m_options.empty()) {
+                io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("OPTIONS:"_sv, header_effect));
+                for (auto const& option : m_options) {
+                    io::writer_print<Enc>(writer, "  "_sv);
+                    if (option.short_name()) {
+                        io::writer_print<Enc>(writer, "{}"_sv, di::Styled(option.short_display_name(), option_effect));
+                        if (!option.boolean() && !option.long_name()) {
+                            io::writer_print<Enc>(writer, " {}"_sv, di::Styled("<VALUE>"_sv, option_value_effect));
+                        }
+                    }
+                    if (option.short_name() && option.long_name()) {
+                        io::writer_print<Enc>(writer, ", "_sv);
+                    }
+                    if (option.long_name()) {
+                        io::writer_print<Enc>(writer, "{}"_sv, di::Styled(option.long_display_name(), option_effect));
+                        if (!option.boolean()) {
+                            io::writer_print<Enc>(writer, " {}"_sv, di::Styled("<VALUE>"_sv, option_value_effect));
+                        }
+                    }
+                    io::writer_println<Enc>(writer, ": {}"_sv, option.description());
+                }
+            }
+        }
+
+        constexpr auto help_string() const {
+            auto writer = di::StringWriter {};
+            write_help(writer);
+            return di::move(writer).output();
+        }
+
     private:
         constexpr bool option_required(usize index) const { return m_options[index].required(); }
-
         constexpr bool option_boolean(usize index) const { return m_options[index].boolean(); }
+        constexpr bool option_always_succeeds(usize index) const { return m_options[index].always_succeeds(); }
 
         constexpr Result<void> option_parse(usize index, Span<bool> seen_arguments, Base* output,
                                             Optional<TransparentStringView> input) const {
@@ -213,15 +317,15 @@ namespace detail {
             };
         }
 
-        Optional<StringView> m_app_name;
-        Optional<StringView> m_description;
+        StringView m_app_name;
+        StringView m_description;
         StaticVector<Option, Constexpr<max_options>> m_options;
         StaticVector<Argument, Constexpr<max_arguments>> m_arguments;
     };
 }
 
 template<concepts::Object T>
-constexpr auto cli_parser(Optional<StringView> app_name = {}, Optional<StringView> description = {}) {
+constexpr auto cli_parser(StringView app_name, StringView description) {
     return detail::Parser<T> { app_name, description };
 }
 }
