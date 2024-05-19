@@ -4,43 +4,44 @@
 #include <di/cli/option.h>
 #include <di/container/algorithm/prelude.h>
 #include <di/container/algorithm/rotate.h>
+#include <di/container/algorithm/sum.h>
 #include <di/container/string/string_view.h>
+#include <di/container/vector/static_vector.h>
+#include <di/function/monad/monad_try.h>
 #include <di/function/prelude.h>
 #include <di/meta/constexpr.h>
+#include <di/vocab/optional/lift_bool.h>
 
 namespace di::cli {
 namespace detail {
-    template<typename Base, typename Options, typename Arguments>
-    class Parser;
-
-    template<concepts::Object Base, typename... Options, typename... Arguments>
-    class Parser<Base, meta::List<Options...>, meta::List<Arguments...>> {
+    template<concepts::Object Base>
+    class Parser {
     private:
+        constexpr static auto max_options = 100zu;
+        constexpr static auto max_arguments = 100zu;
+
     public:
-        constexpr explicit Parser(Optional<StringView> app_name, Optional<StringView> description,
-                                  Tuple<Options...> options, Tuple<Arguments...> arguments)
-            : m_app_name(app_name), m_description(description), m_options(options), m_arguments(arguments) {}
+        constexpr explicit Parser(Optional<StringView> app_name, Optional<StringView> description)
+            : m_app_name(app_name), m_description(description) {}
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
                  concepts::SameAs<Base, meta::MemberPointerClass<decltype(member)>>)
         constexpr auto flag(Optional<char> short_name, Optional<TransparentStringView> long_name = {},
-                            Optional<StringView> description = {}, bool required = false) {
-            auto new_option = Option<member> { short_name, long_name, description, required };
-            return Parser<Base, meta::List<Options..., decltype(new_option)>, meta::List<Arguments...>> {
-                m_app_name, m_description, tuple_cat(m_options, make_tuple(new_option)), m_arguments
-            };
+                            Optional<StringView> description = {}, bool required = false) && {
+            auto new_option = Option { c_<member>, short_name, long_name, description, required };
+            DI_ASSERT(m_options.push_back(new_option));
+            return di::move(*this);
         }
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
                  concepts::SameAs<Base, meta::MemberPointerClass<decltype(member)>>)
         constexpr auto argument(Optional<StringView> name = {}, Optional<StringView> description = {},
-                                bool required = false) {
-            auto new_argument = Argument<member> { name, description, required };
-            return Parser<Base, meta::List<Options...>, meta::List<Arguments..., decltype(new_argument)>> {
-                m_app_name, m_description, m_options, tuple_cat(m_arguments, make_tuple(new_argument))
-            };
+                                bool required = false) && {
+            auto new_argument = Argument { c_<member>, name, description, required };
+            DI_ASSERT(m_arguments.push_back(new_argument));
+            return di::move(*this);
         }
 
         constexpr Result<Base> parse(Span<TransparentStringView> args) {
@@ -51,7 +52,7 @@ namespace detail {
             }
             args = *args.subspan(1);
 
-            auto seen_arguments = Array<bool, sizeof...(Options)> {};
+            auto seen_arguments = Array<bool, max_options> {};
             seen_arguments.fill(false);
 
             auto count_option_processed = usize { 0 };
@@ -152,7 +153,7 @@ namespace detail {
             }
 
             // Validate all required arguments were processed.
-            for (usize i = 0; i < sizeof...(Options); i++) {
+            for (usize i = 0; i < m_options.size(); i++) {
                 if (!seen_arguments[i] && option_required(i)) {
                     return Unexpected(BasicError::InvalidArgument);
                 }
@@ -175,112 +176,53 @@ namespace detail {
         }
 
     private:
-        constexpr bool option_required(usize index) const {
-            if constexpr (sizeof...(Options) == 0) {
-                return false;
-            } else {
-                return function::index_dispatch<bool, sizeof...(Options)>(index, [&]<usize i>(Constexpr<i>) {
-                    return util::get<i>(m_options).required();
-                });
-            }
-        }
+        constexpr bool option_required(usize index) const { return m_options[index].required(); }
 
-        constexpr bool option_boolean(usize index) const {
-            if constexpr (sizeof...(Options) == 0) {
-                return true;
-            } else {
-                return function::index_dispatch<bool, sizeof...(Options)>(index, [&]<usize i>(Constexpr<i>) {
-                    return util::get<i>(m_options).boolean();
-                });
-            }
-        }
+        constexpr bool option_boolean(usize index) const { return m_options[index].boolean(); }
 
         constexpr Result<void> option_parse(usize index, Span<bool> seen_arguments, Base* output,
                                             Optional<TransparentStringView> input) const {
-            if constexpr (sizeof...(Options) == 0) {
-                return Unexpected(BasicError::InvalidArgument);
-            } else {
-                return function::index_dispatch<Result<void>, sizeof...(Options)>(
-                           index,
-                           [&]<usize i>(Constexpr<i>) {
-                               return util::get<i>(m_options).parse(output, input);
-                           }) |
-                       if_success([&] {
-                           seen_arguments[index] = true;
-                       });
-            }
+            DI_TRY(m_options[index].parse(output, input));
+            seen_arguments[index] = true;
+            return {};
         }
 
-        constexpr bool argument_variadic(usize index) const {
-            if constexpr (sizeof...(Arguments) == 0) {
-                return false;
-            } else {
-                return function::index_dispatch<bool, sizeof...(Arguments)>(index, [&]<usize i>(Constexpr<i>) {
-                    return util::get<i>(m_arguments).variadic();
-                });
-            }
-        }
+        constexpr bool argument_variadic(usize index) const { return m_arguments[index].variadic(); }
 
         constexpr Result<void> argument_parse(usize index, Base* output, Span<TransparentStringView> input) const {
-            if constexpr (sizeof...(Arguments) == 0) {
-                return Unexpected(BasicError::InvalidArgument);
-            } else {
-                return function::index_dispatch<Result<void>, sizeof...(Arguments)>(index, [&]<usize i>(Constexpr<i>) {
-                    return util::get<i>(m_arguments).parse(output, input);
-                });
-            }
+            return m_arguments[index].parse(output, input);
         }
 
         constexpr usize minimum_required_argument_count() const {
-            auto result = usize(0);
-            tuple_for_each(
-                [&](auto& argument) {
-                    result += argument.required_argument_count();
-                },
-                m_arguments);
-            return result;
+            return di::sum(m_arguments | di::transform(&Argument::required_argument_count));
         }
 
-        constexpr usize argument_count() const { return sizeof...(Arguments); }
+        constexpr usize argument_count() const { return m_arguments.size(); }
 
         constexpr Optional<usize> lookup_short_name(char short_name) const {
-            auto result = Optional<usize> {};
-            usize index = 0;
-            tuple_for_each(
-                [&](auto& flag) {
-                    if (flag.short_name() == short_name) {
-                        result = index;
-                    }
-                    index++;
-                },
-                m_options);
-            return result;
+            auto it = di::find(m_options, short_name, &Option::short_name);
+            return lift_bool(it != m_options.end()) % [&] {
+                return usize(it - m_options.begin());
+            };
         }
 
         constexpr Optional<usize> lookup_long_name(TransparentStringView long_name) const {
-            auto result = Optional<usize> {};
-            usize index = 0;
-            tuple_for_each(
-                [&](auto& flag) {
-                    if (flag.long_name() == long_name) {
-                        result = index;
-                    }
-                    index++;
-                },
-                m_options);
-            return result;
+            auto it = di::find(m_options, long_name, &Option::long_name);
+            return lift_bool(it != m_options.end()) % [&] {
+                return usize(it - m_options.begin());
+            };
         }
 
         Optional<StringView> m_app_name;
         Optional<StringView> m_description;
-        Tuple<Options...> m_options;
-        Tuple<Arguments...> m_arguments;
+        StaticVector<Option, Constexpr<max_options>> m_options;
+        StaticVector<Argument, Constexpr<max_arguments>> m_arguments;
     };
 }
 
 template<concepts::Object T>
 constexpr auto cli_parser(Optional<StringView> app_name = {}, Optional<StringView> description = {}) {
-    return detail::Parser<T, meta::List<>, meta::List<>> { app_name, description, {}, {} };
+    return detail::Parser<T> { app_name, description };
 }
 }
 

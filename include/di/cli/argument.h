@@ -2,28 +2,32 @@
 
 #include <di/container/string/encoding.h>
 #include <di/container/string/prelude.h>
+#include <di/container/string/string_view.h>
 #include <di/container/vector/mutable_vector.h>
 #include <di/container/vector/prelude.h>
 #include <di/parser/prelude.h>
 #include <di/vocab/span/prelude.h>
 
 namespace di::cli::detail {
-template<auto member>
 class Argument {
 private:
-    static_assert(concepts::MemberObjectPointer<decltype(member)>,
-                  "Argument member must be a pointer to a member object.");
+    using Parse = Result<> (*)(void*, Span<TransparentStringView>);
 
-    using Base = meta::MemberPointerClass<decltype(member)>;
-    using Value = meta::MemberPointerValue<decltype(member)>;
+    template<auto member>
+    constexpr static auto concrete_variadic() -> bool {
+        using Value = meta::MemberPointerValue<decltype(member)>;
 
-public:
-    constexpr explicit Argument(Optional<StringView> argument_name = {}, Optional<StringView> description = {},
-                                bool required = false)
-        : m_argument_name(argument_name), m_description(description), m_required(required) {}
+        // Match any form of vector, but not a string-like type.
+        return concepts::detail::MutableVector<Value> && !concepts::HasEncoding<Value>;
+    }
 
-    constexpr Result<void> parse(Base* output, Span<TransparentStringView> input) const {
-        if constexpr (variadic()) {
+    template<auto member>
+    constexpr static auto concrete_parse(void* output_untyped, Span<TransparentStringView> input) -> Result<> {
+        using Base = meta::MemberPointerClass<decltype(member)>;
+        using Value = meta::MemberPointerValue<decltype(member)>;
+
+        auto* output = static_cast<Base*>(output_untyped);
+        if constexpr (concrete_variadic<member>()) {
             auto& vector = (*output).*member = Value();
             for (auto view : input) {
                 if constexpr (concepts::Expected<meta::detail::VectorAllocResult<Value>>) {
@@ -44,20 +48,37 @@ public:
         }
     }
 
-    constexpr static bool variadic() {
-        // Match any form of vector, but not a string-like type.
-        return concepts::detail::MutableVector<Value> && !concepts::HasEncoding<Value>;
+public:
+    Argument() = default;
+
+    template<auto member>
+    constexpr explicit Argument(Constexpr<member>, Optional<StringView> argument_name = {},
+                                Optional<StringView> description = {}, bool required = false)
+        : m_parse(concrete_parse<member>)
+        , m_argument_name(argument_name)
+        , m_description(description)
+        , m_required(required)
+        , m_variadic(concrete_variadic<member>()) {
+        static_assert(concepts::MemberObjectPointer<decltype(member)>,
+                      "Argument member must be a pointer to a member object.");
     }
 
-    constexpr usize required_argument_count() const { return required() ? 1 : 0; }
-
+    constexpr auto parse(void* output, Span<TransparentStringView> input) const {
+        DI_ASSERT(m_parse);
+        return m_parse(output, input);
+    }
     constexpr auto argument_name() const { return m_argument_name; }
     constexpr auto description() const { return m_description; }
     constexpr auto required() const { return m_required; }
+    constexpr auto variadic() const { return m_variadic; }
+
+    constexpr auto required_argument_count() const -> usize { return required() ? 1 : 0; }
 
 private:
+    Parse m_parse { nullptr };
     Optional<StringView> m_argument_name;
     Optional<StringView> m_description;
     bool m_required { false };
+    bool m_variadic { false };
 };
 }

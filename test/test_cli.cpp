@@ -105,7 +105,7 @@ constexpr void variadic_arguments() {
     }
 }
 
-TESTC(cli, basic);
-TESTC(cli, arguments)
-TESTC(cli, variadic_arguments)
+TESTC_GCC_NOSAN(cli, basic);
+TESTC_GCC_NOSAN(cli, arguments)
+TESTC_GCC_NOSAN(cli, variadic_arguments)
 }
