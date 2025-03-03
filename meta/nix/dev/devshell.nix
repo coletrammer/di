@@ -9,7 +9,7 @@
       constants = import ../constants.nix;
       gcc = pkgs."gcc${constants.gccVersion}";
       clang = pkgs."llvmPackages_${constants.clangVersion}".libcxxClang;
-      stdenv = pkgs."gcc${constants.gccVersion}".stdenv;
+      stdenv = pkgs."gcc${constants.gccVersion}Stdenv";
     in
     {
       devShells.default = pkgs.mkShell.override { inherit stdenv; } {
@@ -36,7 +36,7 @@
             graphviz
 
             # Coverage
-            gcovr
+            lcov
           ]);
       };
     };
