@@ -27,8 +27,9 @@ public:
     IteratorBase(IteratorBase const&)
     requires(concepts::SameAs<Category, InputIteratorTag>)
     = delete;
-    auto operator=(IteratorBase const&)
-        -> IteratorBase& requires(concepts::SameAs<Category, InputIteratorTag>) = delete;
+    auto operator=(IteratorBase const&) -> IteratorBase&
+    requires(concepts::SameAs<Category, InputIteratorTag>)
+    = delete;
 
     constexpr auto operator++() -> Self& {
         self().advance_one();
@@ -44,7 +45,9 @@ public:
         return temp;
     }
 
-    constexpr auto operator--() -> Self& requires(concepts::DerivedFrom<Category, BidirectionalIteratorTag>) {
+    constexpr auto operator--() -> Self&
+    requires(concepts::DerivedFrom<Category, BidirectionalIteratorTag>)
+    {
         self().back_one();
         return self();
     }
@@ -65,20 +68,24 @@ public:
         return *copy;
     }
 
-constexpr auto operator+=(SSizeType n) -> Self& requires(concepts::DerivedFrom<Category, RandomAccessIteratorTag>) {
-    self().advance_n(n);
-    return self();
-}
+    constexpr auto operator+=(SSizeType n) -> Self&
+    requires(concepts::DerivedFrom<Category, RandomAccessIteratorTag>)
+    {
+        self().advance_n(n);
+        return self();
+    }
 
-constexpr auto operator-=(SSizeType n) -> Self& requires(concepts::DerivedFrom<Category, RandomAccessIteratorTag>) {
-    self().advance_n(-n);
-    return self();
-}
+    constexpr auto operator-=(SSizeType n) -> Self&
+    requires(concepts::DerivedFrom<Category, RandomAccessIteratorTag>)
+    {
+        self().advance_n(-n);
+        return self();
+    }
 
-private
-    : constexpr friend auto operator+(Self const& self, SSizeType n) -> Self
-      requires(concepts::DerivedFrom<Category, RandomAccessIteratorTag>)
-{
+private:
+    constexpr friend auto operator+(Self const& self, SSizeType n) -> Self
+    requires(concepts::DerivedFrom<Category, RandomAccessIteratorTag>)
+    {
         auto temp = self;
         temp.advance_n(n);
         return temp;

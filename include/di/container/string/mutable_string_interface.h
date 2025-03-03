@@ -118,7 +118,9 @@ private:
 public:
     constexpr void clear() { return string::clear(self()); }
 
-    constexpr auto operator[](usize index) -> CodePoint& requires(encoding::Contiguous<Enc>) {
+    constexpr auto operator[](usize index) -> CodePoint&
+    requires(encoding::Contiguous<Enc>)
+    {
         DI_ASSERT(index < self().size());
         return vector::data(self())[index];
     }

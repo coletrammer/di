@@ -90,7 +90,9 @@ public:
         }
         return *this;
     }
-    constexpr auto operator+=(SignedT const& value) -> Vec& requires(!di::SameAs<SignedT, T>) {
+    constexpr auto operator+=(SignedT const& value) -> Vec&
+    requires(!di::SameAs<SignedT, T>)
+    {
         for (auto& x : *this) {
             x += value;
         }
@@ -109,7 +111,9 @@ public:
         }
         return *this;
     }
-    constexpr auto operator-=(SignedT const& value) -> Vec& requires(!di::SameAs<SignedT, T>) {
+    constexpr auto operator-=(SignedT const& value) -> Vec&
+    requires(!di::SameAs<SignedT, T>)
+    {
         for (auto& x : *this) {
             x -= value;
         }

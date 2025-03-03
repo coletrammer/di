@@ -75,7 +75,9 @@ private:
         Iterator(Iterator const&)
         requires(!concepts::ForwardIterator<Iter<is_const>>)
         = delete;
-        auto operator=(Iterator const&) -> Iterator& requires(!concepts::ForwardIterator<Iter<is_const>>) = delete;
+        auto operator=(Iterator const&) -> Iterator&
+        requires(!concepts::ForwardIterator<Iter<is_const>>)
+        = delete;
 
         constexpr auto base() && -> Iter<is_const> { return util::move(m_base); }
         constexpr auto base() const& -> Iter<is_const> const& { return m_base; }

@@ -87,8 +87,9 @@ private:
         Iterator(Iterator const&)
         requires(ref_is_glvalue && concepts::ForwardIterator<OuterIter> && concepts::ForwardIterator<InnerIter>)
         = default;
-        auto operator=(Iterator const&) -> Iterator& requires(
-            ref_is_glvalue&& concepts::ForwardIterator<OuterIter>&& concepts::ForwardIterator<InnerIter>) = default;
+        auto operator=(Iterator const&) -> Iterator&
+        requires(ref_is_glvalue && concepts::ForwardIterator<OuterIter> && concepts::ForwardIterator<InnerIter>)
+        = default;
 
         Iterator(Iterator&&) = default;
         auto operator=(Iterator&&) -> Iterator& = default;

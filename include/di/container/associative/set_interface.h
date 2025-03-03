@@ -442,7 +442,9 @@ private:
         return util::move(a);
     }
 
-    constexpr friend auto operator&=(Self& a, Self const& b) -> Self& requires(!is_multi) {
+    constexpr friend auto operator&=(Self& a, Self const& b) -> Self&
+    requires(!is_multi)
+    {
         a.intersect(b);
         return a;
     }
@@ -455,7 +457,9 @@ private:
         return util::move(a);
     }
 
-    constexpr friend auto operator-=(Self& a, Self const& b) -> Self& requires(!is_multi) {
+    constexpr friend auto operator-=(Self& a, Self const& b) -> Self&
+    requires(!is_multi)
+    {
         a.subtract(b);
         return a;
     }

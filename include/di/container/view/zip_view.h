@@ -94,7 +94,9 @@ private:
         Iterator(Iterator const&)
         requires(!all_forward<is_const>)
         = delete;
-        auto operator=(Iterator const&) -> Iterator& requires(!all_forward<is_const>) = delete;
+        auto operator=(Iterator const&) -> Iterator&
+        requires(!all_forward<is_const>)
+        = delete;
 
         constexpr auto operator*() const {
             return tuple_transform(

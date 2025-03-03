@@ -9,7 +9,7 @@ template<typename T>
 concept BitwiseEnum = concepts::Enum<T> && requires(T& lvalue, T a) {
     { ~a } -> di::SameAs<T>;
     { a | a } -> di::SameAs<T>;
-    { a& a } -> di::SameAs<T>;
+    { a & a } -> di::SameAs<T>;
     { a ^ a } -> di::SameAs<T>;
     { lvalue |= a } -> di::SameAs<T&>;
     { lvalue &= a } -> di::SameAs<T&>;

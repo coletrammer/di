@@ -90,7 +90,9 @@ private:
         requires(!detail::IotaIncrementable<T>)
         = delete;
 
-        auto operator=(Iterator const&) -> Iterator& requires(!detail::IotaIncrementable<T>) = delete;
+        auto operator=(Iterator const&) -> Iterator&
+        requires(!detail::IotaIncrementable<T>)
+        = delete;
 
         constexpr auto operator*() const -> T { return m_value; }
 

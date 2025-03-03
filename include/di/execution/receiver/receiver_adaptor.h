@@ -60,7 +60,12 @@ namespace receiver_interface_ns {
                 }
             }
 
-            auto base() & -> Base& requires(has_base) { return this->m_base.value; } auto base() const& -> Base const&
+            auto base() & -> Base&
+            requires(has_base)
+            {
+                return this->m_base.value;
+            }
+            auto base() const& -> Base const&
             requires(has_base)
             {
                 return this->m_base.value;

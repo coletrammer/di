@@ -33,7 +33,9 @@ public:
     CountedIterator(CountedIterator const&)
     requires(!concepts::ForwardIterator<Iter>)
     = delete;
-    auto operator=(CountedIterator const&) -> CountedIterator& requires(!concepts::ForwardIterator<Iter>) = delete;
+    auto operator=(CountedIterator const&) -> CountedIterator&
+    requires(!concepts::ForwardIterator<Iter>)
+    = delete;
 
     constexpr CountedIterator(Iter iterator, SSizeType n) : m_iterator(util::move(iterator)), m_count(n) {}
 

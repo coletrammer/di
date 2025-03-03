@@ -65,7 +65,9 @@ public:
     constexpr ~Box() { reset(); }
 
     auto operator=(Box const&) -> Box& = delete;
-    constexpr auto operator=(Box&& other) -> Box& requires(concepts::MoveAssignable<Deleter>) {
+    constexpr auto operator=(Box&& other) -> Box&
+    requires(concepts::MoveAssignable<Deleter>)
+    {
         reset(other.release());
         m_deleter = util::forward<Deleter>(other.get_deleter());
         return *this;

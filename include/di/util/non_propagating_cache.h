@@ -33,7 +33,9 @@ public:
     }
 
     template<typename I>
-    constexpr auto emplace_deref(I const& it) -> T& requires(requires { T(*it); }) {
+    constexpr auto emplace_deref(I const& it) -> T&
+    requires(requires { T(*it); })
+    {
         this->reset();
         return this->emplace(*it);
     }

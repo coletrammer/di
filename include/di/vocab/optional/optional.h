@@ -118,15 +118,18 @@ public:
         return *this;
     }
 
-    constexpr auto operator=(Optional const& other)
-        -> Optional& requires(concepts::Copyable<T> && !concepts::TriviallyCopyAssignable<Storage>) {
-            if (other.has_value()) {
-                emplace(other.value());
-            }
-            return *this;
+    constexpr auto operator=(Optional const& other) -> Optional&
+    requires(concepts::Copyable<T> && !concepts::TriviallyCopyAssignable<Storage>)
+    {
+        if (other.has_value()) {
+            emplace(other.value());
         }
+        return *this;
+    }
 
-    constexpr auto operator=(Optional&& other) -> Optional& requires(!concepts::TriviallyMoveAssignable<Storage>) {
+    constexpr auto operator=(Optional&& other) -> Optional&
+    requires(!concepts::TriviallyMoveAssignable<Storage>)
+    {
         if (other.has_value()) {
             emplace(util::move(other).value());
         }

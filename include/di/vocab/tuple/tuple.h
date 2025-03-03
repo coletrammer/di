@@ -52,7 +52,9 @@ public:
 
     constexpr ~Tuple() = default;
 
-    constexpr auto operator=(Tuple const& other) -> Tuple& requires(concepts::CopyAssignable<Types>&&...) {
+    constexpr auto operator=(Tuple const& other) -> Tuple&
+    requires(concepts::CopyAssignable<Types> && ...)
+    {
         Base::static_assign(util::forward_as_base<Tuple&, Base>(*this), other);
         return *this;
     }
@@ -64,7 +66,9 @@ public:
         return *this;
     }
 
-    constexpr auto operator=(Tuple&& other) -> Tuple& requires(concepts::MoveAssignable<Types>&&...) {
+    constexpr auto operator=(Tuple&& other) -> Tuple&
+    requires(concepts::MoveAssignable<Types> && ...)
+    {
         Base::static_assign(util::forward_as_base<Tuple&, Base>(*this), util::move(other));
         return *this;
     }

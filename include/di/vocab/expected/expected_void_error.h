@@ -68,10 +68,16 @@ public:
 
     constexpr ~Expected() = default;
 
-    constexpr auto operator=(Expected const&) -> Expected& requires(!concepts::CopyConstructible<T>) = delete;
-    constexpr auto operator=(Expected const&) -> Expected& requires(concepts::CopyConstructible<T>) = default;
+    constexpr auto operator=(Expected const&) -> Expected&
+    requires(!concepts::CopyConstructible<T>)
+    = delete;
+    constexpr auto operator=(Expected const&) -> Expected&
+    requires(concepts::CopyConstructible<T>)
+    = default;
 
-    constexpr auto operator=(Expected&&) -> Expected& requires(concepts::MoveConstructible<T>) = default;
+    constexpr auto operator=(Expected&&) -> Expected&
+    requires(concepts::MoveConstructible<T>)
+    = default;
 
     template<typename U = T>
     requires(!concepts::RemoveCVRefSameAs<Expected, U> && !concepts::Unexpected<U> && concepts::ConstructibleFrom<T, U>)

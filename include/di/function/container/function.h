@@ -62,7 +62,7 @@ namespace function_ns {
     };
 
     template<typename R, typename... Args>
-    struct SignatureInfo<R(Args...)&> {
+    struct SignatureInfo<R(Args...) &> {
         using Type = R(Args...);
 
         template<typename... Fs>

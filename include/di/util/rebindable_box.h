@@ -88,19 +88,19 @@ public:
     constexpr auto operator=(RebindableBox const&) -> RebindableBox& = default;
     constexpr auto operator=(RebindableBox&&) -> RebindableBox& = default;
 
-    constexpr auto operator=(RebindableBox const& other)
-        -> RebindableBox& requires(!concepts::TriviallyCopyAssignable<Storage> &&
-                                   concepts::CopyConstructible<Storage>) {
-            rebind(other.value());
-            return *this;
-        }
+    constexpr auto operator=(RebindableBox const& other) -> RebindableBox&
+    requires(!concepts::TriviallyCopyAssignable<Storage> && concepts::CopyConstructible<Storage>)
+    {
+        rebind(other.value());
+        return *this;
+    }
 
-    constexpr auto operator=(RebindableBox const& other)
-        -> RebindableBox& requires(!concepts::TriviallyMoveAssignable<Storage> &&
-                                   concepts::MoveConstructible<Storage>) {
-            rebind(util::move(other).value());
-            return *this;
-        }
+    constexpr auto operator=(RebindableBox const& other) -> RebindableBox&
+    requires(!concepts::TriviallyMoveAssignable<Storage> && concepts::MoveConstructible<Storage>)
+    {
+        rebind(util::move(other).value());
+        return *this;
+    }
 
     template<typename U>
     requires(concepts::ConstructibleFrom<Storage, U const&>)

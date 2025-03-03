@@ -56,7 +56,9 @@ public:
         m_value += x;
         return *this;
     }
-    constexpr auto operator+=(SSizeType x) -> StrongInt& requires(!concepts::SameAs<SSizeType, Type>) {
+    constexpr auto operator+=(SSizeType x) -> StrongInt&
+    requires(!concepts::SameAs<SSizeType, Type>)
+    {
         m_value += x;
         return *this;
     }
@@ -65,7 +67,9 @@ public:
         m_value -= x;
         return *this;
     }
-    constexpr auto operator-=(SSizeType x) -> StrongInt& requires(!concepts::SameAs<SSizeType, Type>) {
+    constexpr auto operator-=(SSizeType x) -> StrongInt&
+    requires(!concepts::SameAs<SSizeType, Type>)
+    {
         m_value -= x;
         return *this;
     }

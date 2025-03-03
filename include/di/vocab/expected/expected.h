@@ -120,15 +120,17 @@ public:
         internal_reset();
     }
 
-    constexpr auto operator=(Expected const& other)
-        -> Expected& requires(concepts::CopyConstructible<T>&& concepts::CopyConstructible<E>) {
-            return internal_assign_from_expected(other);
-        }
+    constexpr auto operator=(Expected const& other) -> Expected&
+    requires(concepts::CopyConstructible<T> && concepts::CopyConstructible<E>)
+    {
+        return internal_assign_from_expected(other);
+    }
 
-    constexpr auto operator=(Expected&& other)
-        -> Expected& requires(concepts::MoveConstructible<T>&& concepts::MoveConstructible<E>) {
-            return internal_assign_from_expected(util::move(other));
-        }
+    constexpr auto operator=(Expected&& other) -> Expected&
+    requires(concepts::MoveConstructible<T> && concepts::MoveConstructible<E>)
+    {
+        return internal_assign_from_expected(util::move(other));
+    }
 
     template<typename U = T>
     requires(!concepts::RemoveCVRefSameAs<Expected, U> && !concepts::Unexpected<U> && concepts::ConstructibleFrom<T, U>)

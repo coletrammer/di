@@ -186,18 +186,26 @@ struct AnyT {
             Storage::destroy(m_vtable, this);
         }
 
-        auto operator=(Type const&) -> Type& requires(is_trivially_copyable) = default;
+        auto operator=(Type const&) -> Type&
+        requires(is_trivially_copyable)
+        = default;
 
-        auto operator=(Type&&) -> Type& requires(is_trivially_moveable) = default;
+        auto operator=(Type&&) -> Type&
+        requires(is_trivially_moveable)
+        = default;
 
-        constexpr auto operator=(Type const& other) -> Type& requires(is_copyable) {
+        constexpr auto operator=(Type const& other) -> Type&
+        requires(is_copyable)
+        {
             if (this != di::addressof(other)) {
                 Storage::copy_assign(m_vtable, this, other.m_vtable, util::addressof(other));
             }
             return *this;
         }
 
-        constexpr auto operator=(Type&& other) -> Type& requires(is_moveable) {
+        constexpr auto operator=(Type&& other) -> Type&
+        requires(is_moveable)
+        {
             if (this != di::addressof(other)) {
                 Storage::move_assign(m_vtable, this, other.m_vtable, util::addressof(other));
             }

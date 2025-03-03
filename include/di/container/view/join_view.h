@@ -68,7 +68,9 @@ private:
         Iterator(Iterator const&)
         requires(IsForward<Base<is_const>>)
         = default;
-        auto operator=(Iterator const&) -> Iterator& requires(IsForward<Base<is_const>>) = default;
+        auto operator=(Iterator const&) -> Iterator&
+        requires(IsForward<Base<is_const>>)
+        = default;
 
         Iterator(Iterator&&) = default;
         auto operator=(Iterator&&) -> Iterator& = default;

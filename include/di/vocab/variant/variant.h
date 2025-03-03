@@ -63,8 +63,12 @@ public:
     ~Variant()
     requires(trivially_destructible)
     = default;
-    auto operator=(Variant const&) -> Variant& requires(trivially_copy_assignable) = default;
-    auto operator=(Variant&&) -> Variant& requires(trivially_move_assignable) = default;
+    auto operator=(Variant const&) -> Variant&
+    requires(trivially_copy_assignable)
+    = default;
+    auto operator=(Variant&&) -> Variant&
+    requires(trivially_move_assignable)
+    = default;
 
     constexpr Variant()
     requires(concepts::DefaultConstructible<meta::Front<List>>)
@@ -145,7 +149,9 @@ public:
 
     constexpr ~Variant() { destroy(); }
 
-    constexpr auto operator=(Variant const& other) -> Variant& requires(!trivially_copy_assignable && copyable) {
+    constexpr auto operator=(Variant const& other) -> Variant&
+    requires(!trivially_copy_assignable && copyable)
+    {
         destroy();
         function::index_dispatch<void, sizeof...(Types)>(other.index(), [&]<size_t index>(Constexpr<index>) {
             do_emplace(c_<index>, util::get<index>(other));
@@ -153,7 +159,9 @@ public:
         return *this;
     }
 
-    constexpr auto operator=(Variant&& other) -> Variant& requires(!trivially_move_assignable && movable) {
+    constexpr auto operator=(Variant&& other) -> Variant&
+    requires(!trivially_move_assignable && movable)
+    {
         destroy();
         function::index_dispatch<void, sizeof...(Types)>(other.index(), [&]<size_t index>(Constexpr<index>) {
             do_emplace(c_<index>, util::get<index>(util::move(other)));

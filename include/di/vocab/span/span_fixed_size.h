@@ -101,7 +101,11 @@ public:
         return *data();
     }
 
-    constexpr auto back() const -> T& requires(extent > 0) { return *(end() - 1); }
+    constexpr auto back() const -> T&
+    requires(extent > 0)
+    {
+        return *(end() - 1);
+    }
 
     constexpr auto at(types::size_t index) const -> vocab::Optional<T&> {
         if (index >= extent) {
@@ -110,14 +114,14 @@ public:
         return (*this)[index];
     }
 
-    constexpr auto operator[](types::size_t index) const -> T& requires(extent > 0) {
+    constexpr auto operator[](types::size_t index) const -> T&
+    requires(extent > 0)
+    {
         DI_ASSERT(index < extent);
         return data()[index];
     }
 
-    constexpr auto data() const -> T* {
-        return m_data;
-    }
+    constexpr auto data() const -> T* { return m_data; }
 
     constexpr auto size() const -> types::size_t { return extent; }
     constexpr auto size_bytes() const -> types::size_t { return sizeof(T) * extent; }
