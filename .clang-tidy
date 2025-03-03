@@ -2,7 +2,6 @@
 WarningsAsErrors: "*"
 FormatStyle: none
 HeaderFilterRegex: .*
-ExcludeHeaderFilterRegex: ".*(ccpp)/.*|.*limine.h.*"
 ExtraArgs: [-std=gnu++26, -fconstexpr-steps=10000000, -Wno-unknown-warning-option, -fsized-deallocation]
 Checks: >
   -*,
@@ -52,12 +51,6 @@ CheckOptions:
     value: false
   - key: modernize-use-auto.MinTypeNameLength
     value: 0
-  - key: modernize-use-std-print.ReplacementPrintFunction
-    value: dius::print
-  - key: modernize-use-std-print.ReplacementPrintlnFunction
-    value: dius::println
-  - key: modernize-use-std-print.PrintHeader
-    value: <dius/print.h>
   - key: performance-move-const-arg.CheckTriviallyCopyableMove
     value: false
   - key: readability-implicit-bool-conversion.AllowPointerConditions
