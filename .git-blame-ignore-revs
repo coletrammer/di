@@ -1,0 +1,29 @@
+# .git-blame-ignore-revs
+# Autoformatted all documentation
+1608dc38bfafee1d674e70b9ae842738a28fb26a
+# Autoformatted code with clang-format-16
+119429ff18f47997c5a07bf8f6332074891dac3a
+# Autoformatted all JSON files with prettier
+12e7e3a3843d714fdcea9740c7c4c48336b1b621
+# Autoformatted code with clang-format-17 and shfmt
+fe9407861efe744bb398ec1512419e3e733649de
+# Autoformatted all nix code with rfc style
+d1affcc58cdc59ab9d2b9466afa68520ef9c5b7c
+# Autoformatted code with clang-format-19 and modified config
+9a35808999035cab2c1411233d4d23952d8bfded
+# Use trailing return types
+91f4acb86f1d0512a20ec2786b5a78005a9f257c
+# Add bugprone clang-tidy rules
+da441aefff17218ff713e97ef19039ee5861802c
+# Add readability clang-tidy rules
+d8e96610d8d380bbf3ff8464d2d8c2a88ec87648
+# Add modernize clang-tidy rules
+d79585cd510b82fa652125f50f32af93e7e4539b
+# Add misc clang-tidy rules
+287b64915f4e497ad3d68fe50a75d475dca3b554
+# Add performance clang-tidy rules
+e2eb3f33a731062d99f834a3e301c40d3381b9f3
+# Switch include styles to double quotes
+6b745ebe9272ead3e74c39b2d1318b9c51687112
+# Reformat using clang 20
+be7e6f87527ce0144b287de9f622f9b5e5e61158
