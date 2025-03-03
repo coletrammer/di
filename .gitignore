@@ -1,0 +1,12 @@
+**/.DS_Store
+.cache/
+.direnv/
+.idea/
+.vs/
+.vscode/
+build/
+cmake-build-*/
+prefix/
+CMakeLists.txt.user
+CMakeUserPresets.json
+compile_commands.json
