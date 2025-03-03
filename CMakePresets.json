@@ -26,7 +26,8 @@
             "hidden": true,
             "inherits": "cmake-pedantic",
             "cacheVariables": {
-                "di_DEVELOPER_MODE": "ON"
+                "di_DEVELOPER_MODE": "ON",
+                "CMAKE_VERIFY_INTERFACE_HEADER_SETS": "ON"
             }
         },
         {

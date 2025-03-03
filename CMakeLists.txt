@@ -7,7 +7,7 @@ project(
     VERSION 0.1.0
     DESCRIPTION "A free-standing alternative C++ standard library"
     HOMEPAGE_URL "https://coletrammer.github.io/di"
-    LANGUAGES NONE
+    LANGUAGES CXX
 )
 
 include(meta/cmake/variables.cmake)
