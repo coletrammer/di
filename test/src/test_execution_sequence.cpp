@@ -33,13 +33,13 @@
 #include "di/function/tag_invoke.h"
 #include "di/meta/core.h"
 #include "di/platform/prelude.h"
+#include "di/test/prelude.h"
 #include "di/util/move.h"
 #include "di/util/prelude.h"
 #include "di/vocab/array/array.h"
 #include "di/vocab/error/prelude.h"
 #include "di/vocab/expected/expected_forward_declaration.h"
 #include "di/vocab/expected/prelude.h"
-#include "di/test/prelude.h"
 
 namespace execution_sequence {
 namespace ex = di::execution;

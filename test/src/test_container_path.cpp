@@ -1,7 +1,7 @@
 #include "di/container/path/prelude.h"
 #include "di/container/view/prelude.h"
-#include "di/vocab/array/prelude.h"
 #include "di/test/prelude.h"
+#include "di/vocab/array/prelude.h"
 
 namespace container_path {
 constexpr static void iteration() {

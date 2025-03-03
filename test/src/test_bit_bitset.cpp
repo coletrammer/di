@@ -1,6 +1,6 @@
 #include "di/bit/bitset/prelude.h"
-#include "di/util/prelude.h"
 #include "di/test/prelude.h"
+#include "di/util/prelude.h"
 
 namespace bit_bitset {
 constexpr static void basic() {

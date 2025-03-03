@@ -51,11 +51,11 @@
 #include "di/function/make_deferred.h"
 #include "di/platform/prelude.h"
 #include "di/sync/prelude.h"
+#include "di/test/prelude.h"
 #include "di/types/integers.h"
 #include "di/util/prelude.h"
 #include "di/vocab/error/prelude.h"
 #include "di/vocab/expected/prelude.h"
-#include "di/test/prelude.h"
 
 namespace execution {
 static void meta() {

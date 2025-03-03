@@ -1,8 +1,8 @@
 #include "di/container/hash/prelude.h"
 #include "di/reflect/prelude.h"
 #include "di/reflect/valid_enum_value.h"
-#include "di/util/bitwise_enum.h"
 #include "di/test/prelude.h"
+#include "di/util/bitwise_enum.h"
 
 namespace reflect {
 struct MyType {

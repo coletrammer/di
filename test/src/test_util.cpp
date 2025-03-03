@@ -1,6 +1,6 @@
+#include "di/test/prelude.h"
 #include "di/util/named_arguments.h"
 #include "di/util/prelude.h"
-#include "di/test/prelude.h"
 
 namespace util {
 constexpr static void scope_exit() {

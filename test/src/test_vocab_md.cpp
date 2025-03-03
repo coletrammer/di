@@ -1,5 +1,5 @@
-#include "di/vocab/md/prelude.h"
 #include "di/test/prelude.h"
+#include "di/vocab/md/prelude.h"
 
 namespace vocab_md {
 constexpr static void extents() {

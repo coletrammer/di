@@ -1,5 +1,5 @@
-#include "di/vocab/array/prelude.h"
 #include "di/test/prelude.h"
+#include "di/vocab/array/prelude.h"
 
 namespace vocab_array {
 constexpr static void to_array() {

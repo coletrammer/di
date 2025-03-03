@@ -1,7 +1,7 @@
+#include "di/test/prelude.h"
 #include "di/vocab/error/error.h"
 #include "di/vocab/error/meta/common_error.h"
 #include "di/vocab/error/prelude.h"
-#include "di/test/prelude.h"
 
 namespace vocab_error {
 constexpr static void basic() {

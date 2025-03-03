@@ -1,6 +1,6 @@
 #include "di/meta/trivial.h"
-#include "di/vocab/optional/prelude.h"
 #include "di/test/prelude.h"
+#include "di/vocab/optional/prelude.h"
 
 namespace vocab_optional {
 static_assert(sizeof(di::Optional<int&>) == sizeof(int*));

@@ -1,5 +1,5 @@
-#include "di/vocab/expected/prelude.h"
 #include "di/test/prelude.h"
+#include "di/vocab/expected/prelude.h"
 
 namespace vocab_expected {
 constexpr static void void_value() {

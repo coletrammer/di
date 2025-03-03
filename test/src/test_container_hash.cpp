@@ -1,8 +1,8 @@
 #include "di/container/hash/hash_write.h"
 #include "di/container/hash/prelude.h"
 #include "di/meta/compare.h"
-#include "di/vocab/tuple/prelude.h"
 #include "di/test/prelude.h"
+#include "di/vocab/tuple/prelude.h"
 
 namespace container_hash {
 constexpr static void hash() {

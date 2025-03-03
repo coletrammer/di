@@ -2,8 +2,8 @@
 #include "di/format/to_string.h"
 #include "di/random/distribution/uniform_int_distribution.h"
 #include "di/serialization/base64.h"
-#include "di/vocab/array/array.h"
 #include "di/test/prelude.h"
+#include "di/vocab/array/array.h"
 
 namespace serialization_base64 {
 struct Case {
@@ -23,21 +23,21 @@ constexpr auto cases = []() {
     };
 };
 
-constexpr void base64_encode() {
+constexpr static void base64_encode() {
     for (auto const& [input, output] : cases()) {
         auto result = di::to_string(di::Base64View(input.span()));
         ASSERT_EQ(result, output);
     }
 }
 
-constexpr void base64_decode() {
+constexpr static void base64_decode() {
     for (auto const& [output, input] : cases()) {
         auto result = di::parse_unchecked<di::Base64<>>(input);
         ASSERT_EQ(result.container(), output);
     }
 }
 
-constexpr void base64_errors() {
+constexpr static void base64_errors() {
     ASSERT(!di::parse<di::Base64<>>("A==="_sv));
     ASSERT(!di::parse<di::Base64<>>("===="_sv));
     ASSERT(!di::parse<di::Base64<>>("AAAA===="_sv));
@@ -48,12 +48,12 @@ constexpr void base64_errors() {
     ASSERT(!di::parse<di::Base64<>>("AAAAB"_sv));
 }
 
-constexpr void base64_literal() {
+constexpr static void base64_literal() {
     auto base64 = "ASDF"_base64;
     ASSERT_EQ(di::to_string(base64), "ASDF"_sv);
 }
 
-constexpr void base64_roundtrip() {
+constexpr static void base64_roundtrip() {
     auto do_test = [](di::UniformRandomBitGenerator auto rng) {
         auto n = di::UniformIntDistribution(0, 100)(rng);
         auto bytes = di::Vector<byte> {};
