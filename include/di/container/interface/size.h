@@ -11,6 +11,7 @@
 #include "di/meta/core.h"
 #include "di/meta/language.h"
 #include "di/meta/operations.h"
+#include "di/platform/compiler.h"
 #include "di/types/size_t.h"
 
 namespace di::container {
@@ -44,7 +45,14 @@ struct SizeFunction : function::pipeline::EnablePipeline {
         } else if constexpr (detail::CustomSize<T>) {
             return function::tag_invoke(*this, util::forward<T>(container));
         } else if constexpr (detail::MemberSize<T>) {
+#ifdef DI_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-result"
+#endif
             return util::forward<T>(container).size();
+#ifdef DI_CLANG
+#pragma clang diagnostic pop
+#endif
         } else {
             return end(container) - begin(container);
         }

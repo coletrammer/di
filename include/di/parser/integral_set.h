@@ -125,7 +125,7 @@ inline namespace literals {
     inline namespace integral_set_literals {
 
 #define DI_DEFINE_INTEGRAL_OP(input_kind, output_kind, name)            \
-    constexpr auto operator"" name(input_kind value) {                  \
+    constexpr auto operator""##name(input_kind value) {                 \
         return parser::MatchOne<output_kind> { (output_kind) (value) }; \
     }
 

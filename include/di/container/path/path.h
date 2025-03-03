@@ -20,7 +20,7 @@ inline namespace literals {
             return view.to_owned();
         }
 
-        constexpr auto operator"" _u8p(c8 const* data, size_t size) {
+        constexpr auto operator""_u8p(c8 const* data, size_t size) {
             auto span = di::Span { data, size };
             DI_ASSERT(container::string::encoding::validate(container::string::Utf8Encoding(), span));
             auto view =
@@ -28,7 +28,7 @@ inline namespace literals {
             return view.to_owned();
         }
 
-        constexpr auto operator"" _p(char const* data, size_t size) {
+        constexpr auto operator""_p(char const* data, size_t size) {
             auto span = di::Span { data, size };
             auto view = container::PathView { container::TransparentStringView { span } };
             return view.to_owned();

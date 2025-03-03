@@ -7,6 +7,7 @@
 #include "di/meta/core.h"
 #include "di/meta/language.h"
 #include "di/meta/util.h"
+#include "di/platform/compiler.h"
 #include "di/util/forward.h"
 
 namespace di::container {
@@ -36,7 +37,14 @@ struct BeginFunction : function::pipeline::EnablePipeline {
         } else if constexpr (detail::CustomBegin<T>) {
             return function::tag_invoke(*this, util::forward<T>(container));
         } else {
+#ifdef DI_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-result"
+#endif
             return util::forward<T>(container).begin();
+#ifdef DI_CLANG
+#pragma clang diagnostic pop
+#endif
         }
     }
 };

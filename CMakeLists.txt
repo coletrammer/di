@@ -4,7 +4,7 @@ include(meta/cmake/prelude.cmake)
 
 project(
     di
-    VERSION 0.0.1
+    VERSION 0.1.0
     DESCRIPTION "A free-standing alternative C++ standard library"
     HOMEPAGE_URL "https://coletrammer.github.io/di"
     LANGUAGES NONE
@@ -36,9 +36,6 @@ target_sources(
 
 target_compile_options(di_di INTERFACE -std=gnu++26)
 target_compile_options(di_di INTERFACE -fno-exceptions -fno-rtti)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(di_di INTERFACE -fsized-deallocation)
-endif()
 
 # ---- Install rules ----
 

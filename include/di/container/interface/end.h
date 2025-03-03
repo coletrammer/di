@@ -8,6 +8,7 @@
 #include "di/meta/core.h"
 #include "di/meta/language.h"
 #include "di/meta/util.h"
+#include "di/platform/compiler.h"
 #include "di/types/size_t.h"
 #include "di/util/forward.h"
 
@@ -39,7 +40,14 @@ struct EndFunction : function::pipeline::EnablePipeline {
         } else if constexpr (detail::CustomEnd<T>) {
             return function::tag_invoke(*this, util::forward<T>(container));
         } else {
+#ifdef DI_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-result"
+#endif
             return util::forward<T>(container).end();
+#ifdef DI_CLANG
+#pragma clang diagnostic pop
+#endif
         }
     }
 };
