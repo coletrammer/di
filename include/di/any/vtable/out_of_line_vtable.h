@@ -20,7 +20,7 @@ struct OutOfLineVTable {
 
         template<typename Storage, typename T>
         constexpr static auto method_table =
-            make_tuple(detail::ErasedCallImpl<meta::Type<Methods>, Storage, T>::call...);
+            di::make_tuple(detail::ErasedCallImpl<meta::Type<Methods>, Storage, T>::call...);
 
     public:
         template<typename Storage, concepts::AnyStorable<Storage> T>

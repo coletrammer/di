@@ -77,7 +77,7 @@ protected:
 
 private:
     template<typename Domain>
-    friend class StatusCode;
+    friend class di::vocab::StatusCode;
 
     constexpr auto down_cast(vocab::StatusCode<void> const& code) const -> vocab::GenericCode const& {
         DI_ASSERT(code.domain() == *this);

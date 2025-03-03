@@ -48,15 +48,41 @@ namespace detail {
         }
     };
 
+    struct InteractiveDeviceMember {
+        template<typename T>
+        constexpr auto operator()(T& writer) const -> bool
+        requires(requires {
+            { writer.interactive_device() } -> concepts::ImplicitlyConvertibleTo<bool>;
+        })
+        {
+            return writer.interactive_device();
+        }
+
+        template<typename T>
+        constexpr auto operator()(util::ReferenceWrapper<T> writer) const -> bool
+        requires(requires {
+            { (*this)(writer.get()) };
+        })
+        {
+            return (*this)(writer.get());
+        }
+    };
+
+    struct InteractiveDeviceDefault {
+        constexpr auto operator()(auto&) const -> bool { return false; }
+    };
 }
 
 struct WriteSome : Dispatcher<WriteSome, Result<usize>(This&, Span<Byte const>), detail::WriteSomeMember> {};
 struct Flush : Dispatcher<Flush, Result<void>(This&), detail::FlushMember> {};
+struct InteractiveDevice
+    : Dispatcher<InteractiveDevice, bool(This&), detail::InteractiveDeviceMember, detail::InteractiveDeviceDefault> {};
 
 constexpr inline auto write_some = WriteSome {};
 constexpr inline auto flush = Flush {};
+constexpr inline auto interactive_device = InteractiveDevice {};
 
-using Writer = meta::List<WriteSome, Flush>;
+using Writer = meta::List<WriteSome, Flush, InteractiveDevice>;
 }
 
 namespace di::meta {

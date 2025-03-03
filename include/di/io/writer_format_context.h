@@ -13,9 +13,7 @@ public:
     using SupportsStyle = void;
 
     constexpr explicit WriterFormatContext(Writer& writer, Enc enc) : m_writer(writer), m_encoding(enc) {
-        if constexpr (requires { writer.interactive_device(); }) {
-            m_print_colors = writer.interactive_device();
-        }
+        m_print_colors = interactive_device(writer);
     }
 
     constexpr ~WriterFormatContext() { (void) flush(m_writer); }
