@@ -1,8 +1,19 @@
-file(GLOB sources CONFIGURE_DEPENDS *.cpp)
-add_executable(test_di ${sources})
+cmake_minimum_required(VERSION 3.21)
 
-find_package(Dius REQUIRED)
+project(diTests LANGUAGES CXX)
 
-target_link_libraries(test_di PRIVATE Di::di Dius::dius Dius::dius_test_main)
+# ---- Dependencies ----
 
-add_test(NAME test_di COMMAND test_di)
+if(PROJECT_IS_TOP_LEVEL)
+    find_package(headeronly REQUIRED)
+    enable_testing()
+endif()
+
+# ---- Tests ----
+
+file(GLOB sources CONFIGURE_DEPENDS src/*.cpp)
+add_executable(di_test ${sources})
+
+target_link_libraries(di_test PRIVATE di::di)
+
+add_test(NAME di_test COMMAND di_test)

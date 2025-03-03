@@ -1,5 +1,5 @@
 {
-  description = "A free-standing alternative standard library";
+  description = "A free-standing alternative C++ standard library";
 
   inputs = {
     nixpkgs = {
