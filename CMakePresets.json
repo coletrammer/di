@@ -55,7 +55,8 @@
             "hidden": true,
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS_RELEASE": "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -O3 -DNDEBUG"
+                "CMAKE_CXX_FLAGS_RELEASE": "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -O3 -DNDEBUG",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "On"
             }
         },
         {
@@ -94,11 +95,39 @@
         },
         {
             "name": "ci-ubuntu-gcc",
+            "binaryDir": "${sourceDir}/build",
             "inherits": ["ci-build", "ci-linux", "dev-mode"]
         },
         {
             "name": "ci-ubuntu-clang",
+            "binaryDir": "${sourceDir}/build",
             "inherits": ["ci-build", "ci-linux", "dev-mode", "clang"]
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "ci-ubuntu-gcc",
+            "configurePreset": "ci-ubuntu-gcc"
+        },
+        {
+            "name": "ci-ubuntu-linux",
+            "configurePreset": "ci-ubuntu-clang"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "ci-ubuntu-gcc",
+            "configurePreset": "ci-ubuntu-gcc",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "ci-ubuntu-clang",
+            "configurePreset": "ci-ubuntu-clang",
+            "output": {
+                "outputOnFailure": true
+            }
         }
     ]
 }

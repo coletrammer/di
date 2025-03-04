@@ -30,6 +30,8 @@
 
             # justfile support
             just
+            jq
+            fzf
 
             # Docs
             doxygen
