@@ -1,12 +1,28 @@
 {
   "nodes": {
+    "doxygen-awesome-css": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1736281781,
+        "narHash": "sha256-TjZTymFubqoEvQdWw5bX2PLWPh//VYFJHbsrmdbaS7M=",
+        "owner": "jothepro",
+        "repo": "doxygen-awesome-css",
+        "rev": "98dd024a650e71d8afd1215c27134aa779bdbbd7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jothepro",
+        "repo": "doxygen-awesome-css",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1740791350,
-        "narHash": "sha256-igS2Z4tVw5W/x3lCZeeadt0vcU9fxtetZ/RyrqsCRQ0=",
+        "lastModified": 1741037377,
+        "narHash": "sha256-SvtvVKHaUX4Owb+PasySwZsoc5VUeTf1px34BByiOxw=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "199169a2135e6b864a888e89a2ace345703c025d",
+        "rev": "02032da4af073d0f6110540c8677f16d4be0117f",
         "type": "github"
       },
       "original": {
@@ -18,6 +34,7 @@
     },
     "root": {
       "inputs": {
+        "doxygen-awesome-css": "doxygen-awesome-css",
         "nixpkgs": "nixpkgs",
         "treefmt-nix": "treefmt-nix"
       }

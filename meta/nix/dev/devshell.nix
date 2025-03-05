@@ -1,3 +1,4 @@
+{ inputs, ... }:
 {
   perSystem =
     {
@@ -13,6 +14,9 @@
     in
     {
       devShells.default = pkgs.mkShell.override { inherit stdenv; } {
+        shellHook = ''
+          export DI_DOXYGEN_AWESOME_DIR=${inputs.doxygen-awesome-css};
+        '';
         packages =
           [
             # Compilers

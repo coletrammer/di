@@ -77,7 +77,7 @@ namespace nest_ns {
 ///
 /// The following example demonstrates simple usage of execution::nest():
 ///
-/// @snippet{trimleft} tests/test_execution.cpp nest
+/// @snippet{trimleft} test/src/test_execution.cpp nest
 ///
 /// @see spawn
 /// @see spawn_future
@@ -119,7 +119,7 @@ namespace spawn_ns {
 /// In cases where the result of the sender is needed, execution::spawn_future() should be used instead.
 ///
 /// The following example uses execution::spawn() to start 10 tasks in parallel, and then waits for them to complete:
-/// @snippet{trimleft} tests/test_execution.cpp spawn
+/// @snippet{trimleft} test/src/test_execution.cpp spawn
 ///
 /// @note The sender must not send any values or complete with an error (since the result is ignored). The only
 /// completion signatures allowed are di::SetValue() and di::SetStopped().
@@ -162,7 +162,7 @@ namespace spawn_future_ns {
 /// the race condition between the eagerly started sender completing, and the returned future being started.
 ///
 /// The following example uses execution::spawn_future() to start 4 tasks in parallel, and sums the results:
-/// @snippet{trimleft} tests/test_execution.cpp spawn_future
+/// @snippet{trimleft} test/src/test_execution.cpp spawn_future
 ///
 /// @see nest
 /// @see spawn

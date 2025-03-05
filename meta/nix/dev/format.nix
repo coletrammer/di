@@ -55,6 +55,9 @@
           ".github/CODEOWNERS"
           ".gitignore"
           ".prettierignore"
+          "**/*.xml"
+          "**/*.in"
+          "docs/header.html"
           "LICENSE"
         ];
       };

@@ -64,7 +64,7 @@ private:
 /// named arguments to be optional, but this may change in the future.
 ///
 /// The folllowing example shows how to use this class and related methods:
-/// @snippet{trimleft} tests/test_util.cpp named_arguments
+/// @snippet{trimleft} test/src/test_util.cpp named_arguments
 ///
 /// @see NamedArgument
 /// @see get_named_argument

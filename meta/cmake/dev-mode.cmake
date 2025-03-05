@@ -8,4 +8,9 @@ if(ENABLE_COVERAGE)
     include(meta/cmake/coverage.cmake)
 endif()
 
+option(BUILD_DOCS "Build documentation using Doxygen" OFF)
+if(BUILD_DOCS)
+    include(meta/cmake/docs.cmake)
+endif()
+
 include(meta/cmake/tidy.cmake)

@@ -31,6 +31,13 @@
             }
         },
         {
+            "name": "docs",
+            "hidden": true,
+            "cacheVariables": {
+                "BUILD_DOCS": "On"
+            }
+        },
+        {
             "name": "clang",
             "hidden": true,
             "cacheVariables": {
@@ -96,12 +103,12 @@
         {
             "name": "ci-ubuntu-gcc",
             "binaryDir": "${sourceDir}/build",
-            "inherits": ["ci-build", "ci-linux", "dev-mode"]
+            "inherits": ["ci-build", "ci-linux", "docs", "dev-mode"]
         },
         {
             "name": "ci-ubuntu-clang",
             "binaryDir": "${sourceDir}/build",
-            "inherits": ["ci-build", "ci-linux", "dev-mode", "clang"]
+            "inherits": ["ci-build", "ci-linux", "docs", "dev-mode", "clang"]
         }
     ],
     "buildPresets": [

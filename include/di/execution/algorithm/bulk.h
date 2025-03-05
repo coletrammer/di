@@ -192,7 +192,7 @@ namespace bulk_ns {
 ///
 /// The following example demonstrates how to sum over a vector of values in parallel, using a vector of intemediate
 /// results to avoid contention.
-/// @snippet{trimleft} tests/test_execution.cpp bulk
+/// @snippet{trimleft} test/src/test_execution.cpp bulk
 ///
 /// @warning The function must be thread-safe, if invoked on a parallel scheduler.
 constexpr inline auto bulk = function::curry_back(bulk_ns::Function {}, c_<3ZU>);

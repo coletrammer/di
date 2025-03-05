@@ -270,7 +270,7 @@ namespace then_ns {
 /// function to return a sender.
 ///
 /// The following examples show how to use this function:
-/// @snippet{trimleft} tests/test_execution.cpp then
+/// @snippet{trimleft} test/src/test_execution.cpp then
 ///
 /// @see let_value
 constexpr inline auto then = function::curry_back(then_ns::ValueFunction {}, c_<2ZU>);

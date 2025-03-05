@@ -333,6 +333,6 @@ namespace first_value_ns {
 /// place of the first value. If the sequence itself is empty, the returned sender will complete with a stopped signal.
 ///
 /// See the following for an example:
-/// @snippet{trimleft} tests/test_execution_sequence.cpp first_value
+/// @snippet{trimleft} test/src/test_execution_sequence.cpp first_value
 constexpr inline auto first_value = first_value_ns::Function {};
 }

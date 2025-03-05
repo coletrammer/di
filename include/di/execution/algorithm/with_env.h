@@ -99,7 +99,7 @@ namespace with_env_ns {
 ///
 /// The following is an example of a sender that uses its injected stop token to know if it should stop itself:
 ///
-/// @snippet{trimleft} tests/test_execution.cpp with_env
+/// @snippet{trimleft} test/src/test_execution.cpp with_env
 ///
 /// @see with
 /// @see make_env

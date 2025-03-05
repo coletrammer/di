@@ -106,6 +106,7 @@ clean: ensure_configured
 
 # Build docs
 build_docs: ensure_configured
+    @just preset={{ preset }} build --target docs
 
 # Open docs
 open_docs: ensure_configured
@@ -123,6 +124,11 @@ format:
 # Validate format and lint code
 check:
     nix flake check
+
+# Update flakes
+update:
+    nix flake update --flake .
+    nix flake update --flake ./meta/nix/dev
 
 # Select a CMake preset (meant to be run with eval, e.g. `eval $(just choose)`)
 choose:

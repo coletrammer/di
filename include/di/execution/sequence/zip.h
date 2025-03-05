@@ -572,7 +572,7 @@ namespace zip_ns {
 ///
 /// This function is used to combine multiple sequences together into a single sequence. For example:
 ///
-/// @snippet{trimleft} tests/test_execution_sequence.cpp zip
+/// @snippet{trimleft} test/src/test_execution_sequence.cpp zip
 ///
 /// The sequences passed to this function will first be converted to lockstep sequences using
 /// into_lockstep_sequence(). As a result, the sequence returned by this function will be a lockstep

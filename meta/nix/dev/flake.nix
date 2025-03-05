@@ -10,6 +10,11 @@
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    doxygen-awesome-css = {
+      url = "github:jothepro/doxygen-awesome-css";
+      flake = false;
+    };
   };
 
   # This flake is only used for its inputs.

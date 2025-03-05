@@ -112,7 +112,7 @@ namespace let_value_with_ns {
 /// This demonstrates the function::make_deferred helper function, which binds arguments to a constructor, as well as
 /// the fact that normal lambdas can be used as a factory function.
 ///
-/// @snippet{trimleft} tests/test_execution.cpp let_value_with
+/// @snippet{trimleft} test/src/test_execution.cpp let_value_with
 ///
 /// @see function::make_deferred
 constexpr inline auto let_value_with = let_value_with_ns::Function {};

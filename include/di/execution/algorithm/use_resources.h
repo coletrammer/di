@@ -50,7 +50,7 @@ namespace use_resources_ns {
 /// and released, and even does so in parallel.
 ///
 /// See the following usage example:
-/// @snippet{trimleft} test/test_execution.cpp use_resources
+/// @snippet{trimleft} test/src/test_execution.cpp use_resources
 ///
 /// @see run
 constexpr inline auto use_resources = use_resources_ns::Function {};
