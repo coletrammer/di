@@ -1,6 +1,9 @@
 { inputs, ... }:
 {
-  imports = [ inputs.flake-parts.flakeModules.partitions ];
+  imports = [
+    inputs.flake-parts.flakeModules.partitions
+    ./packages.nix
+  ];
 
   partitions = {
     # Define the dev partition, which will be used to define things like
