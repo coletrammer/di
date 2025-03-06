@@ -5,7 +5,7 @@ project(diTests LANGUAGES CXX)
 # ---- Dependencies ----
 
 if(PROJECT_IS_TOP_LEVEL)
-    find_package(headeronly REQUIRED)
+    find_package(di REQUIRED)
     enable_testing()
 endif()
 

@@ -63,7 +63,8 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_FLAGS_RELEASE": "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -O3 -DNDEBUG",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "On"
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "On",
+                "CMAKE_CXX_COMPILER_LAUNCHER": "ccache"
             }
         },
         {
