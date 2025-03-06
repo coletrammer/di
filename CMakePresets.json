@@ -90,7 +90,7 @@
         {
             "name": "ci-sanitize",
             "binaryDir": "${sourceDir}/build/sanitize",
-            "inherits": ["ci-linux", "dev-mode"],
+            "inherits": ["ci-linux", "dev-mode", "clang"],
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Sanitize",
                 "CMAKE_CXX_FLAGS_SANITIZE": "-U_FORTIFY_SOURCE -O2 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-common"
@@ -114,15 +114,37 @@
     ],
     "buildPresets": [
         {
+            "name": "ci-coverage",
+            "configurePreset": "ci-coverage"
+        },
+        {
+            "name": "ci-sanitize",
+            "configurePreset": "ci-sanitize"
+        },
+        {
             "name": "ci-ubuntu-gcc",
             "configurePreset": "ci-ubuntu-gcc"
         },
         {
-            "name": "ci-ubuntu-linux",
+            "name": "ci-ubuntu-clang",
             "configurePreset": "ci-ubuntu-clang"
         }
     ],
     "testPresets": [
+        {
+            "name": "ci-coverage",
+            "configurePreset": "ci-coverage",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "ci-sanitize",
+            "configurePreset": "ci-sanitize",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
         {
             "name": "ci-ubuntu-gcc",
             "configurePreset": "ci-ubuntu-gcc",

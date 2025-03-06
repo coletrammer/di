@@ -139,7 +139,7 @@ cleanall:
     rm -rf build/
 
 [private]
-ensure_configured preset=preset:
+ensure_configured preset=preset: ensure_user_presets
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -156,4 +156,13 @@ ensure_configured preset=preset:
     if [ "$(readlink build/compile_commands.json)" != "$build_directory"/compile_commands.json ]; then
         rm -f compile_commands.json
         ln -s "$build_directory"/compile_commands.json compile_commands.json
+    fi
+
+[private]
+ensure_user_presets:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ ! -e "CMakeUserPresets.json" ]; then
+        echo '{"version":2,"configurePresets":[]}' > CMakeUserPresets.json
     fi
