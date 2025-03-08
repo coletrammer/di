@@ -7,6 +7,7 @@
 
 namespace di::sync {
 class DumbConditionVariable {
+public:
     DumbConditionVariable() = default;
 
     DumbConditionVariable(DumbConditionVariable const&) = delete;

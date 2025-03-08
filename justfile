@@ -54,7 +54,7 @@ build_test *args="":
 
 # Configure and build and test
 configure_build_test *args="":
-    @just preset={{ preset }} config
+    @just preset={{ preset }} configure
     @just preset={{ preset }} bt {{ args }}
 
 # Compile a specific file (regex matching)
