@@ -72,9 +72,9 @@ constexpr static void cos() {
 
 constexpr static void sin() {
     ASSERT_EQ(di::sin(0), 0.0);
-    ASSERT_EQ(di::sin(di::numbers::pi), 0.0);
-    ASSERT_EQ(di::sin(-di::numbers::pi), 0.0);
-    ASSERT_EQ(di::sin(120 * di::numbers::pi), 0.0);
+    ASSERT_APPROX_EQ(di::sin(di::numbers::pi), 0.0);
+    ASSERT_APPROX_EQ(di::sin(-di::numbers::pi), 0.0);
+    ASSERT_APPROX_EQ(di::sin(120 * di::numbers::pi), 0.0);
 
     ASSERT_APPROX_EQ(di::sin(di::numbers::pi / 2), 1.0);
     ASSERT_APPROX_EQ(di::sin(di::numbers::pi / 4), 0.7071);

@@ -1,12 +1,15 @@
 #pragma once
 
+#include "di/platform/architecture.h"
 #include "di/sync/atomic.h"
 #include "di/sync/concepts/lock.h"
 
 namespace di::sync {
 inline void cpu_relax() {
-#ifdef __x86_64__
+#ifdef DI_X86_64
     asm volatile("pause" ::: "memory");
+#elifdef DI_ARM64
+    asm volatile("isb" ::: "memory");
 #endif
 }
 

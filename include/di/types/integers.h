@@ -16,7 +16,7 @@ using i16 = __INT16_TYPE__;
 using i32 = __INT32_TYPE__;
 using i64 = __INT64_TYPE__;
 
-#ifdef __x86_64__
+#ifdef __SIZEOF_INT128__
 #define DI_HAVE_128_BIT_INTEGERS
 using u128 = __uint128_t;
 using i128 = __int128_t;
