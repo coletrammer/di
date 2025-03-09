@@ -4,10 +4,11 @@
     {
       config,
       pkgs,
+      system,
       ...
     }:
     let
-      constants = import ../constants.nix;
+      constants = import ../constants.nix { inherit system; };
       gcc = pkgs."gcc${constants.gccVersion}";
       clang = pkgs."llvmPackages_${constants.clangVersion}".libcxxClang;
       stdenv = pkgs."gcc${constants.gccVersion}Stdenv";
