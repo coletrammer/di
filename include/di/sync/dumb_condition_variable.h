@@ -16,7 +16,12 @@ public:
     void notify_one() {}
     void notify_all() {}
 
-    void wait(UniqueLock<DumbSpinlock>& lock) { DI_ASSERT(lock.owns_lock()); }
+    void wait(UniqueLock<DumbSpinlock>& lock) {
+        DI_ASSERT(lock.owns_lock());
+        lock.unlock();
+        cpu_relax();
+        lock.lock();
+    }
 
     template<di::concepts::CallableTo<bool> Pred>
     void wait(UniqueLock<DumbSpinlock>& lock, Pred predicate) {
