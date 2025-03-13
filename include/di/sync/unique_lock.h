@@ -60,6 +60,7 @@ public:
         DI_ASSERT(m_mutex);
         DI_ASSERT(m_owned);
         m_mutex->unlock();
+        m_owned = false;
     }
 
     constexpr void swap(UniqueLock& other) {
