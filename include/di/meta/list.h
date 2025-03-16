@@ -7,6 +7,13 @@
 
 namespace di::meta {
 namespace detail {
+#if __has_builtin(__type_pack_element)
+    template<usize index, typename... Types>
+    struct AtHelper : TypeConstant<__type_pack_element<index, Types...>> {};
+#elif __has_builtin(__builtin_type_pack_element)
+    template<usize index, typename... Types>
+    struct AtHelper : TypeConstant<__builtin_type_pack_element(index, Types...)> {};
+#else
     template<usize index, typename... Types>
     struct AtHelper {};
 
@@ -15,6 +22,7 @@ namespace detail {
 
     template<usize index, typename T, typename... Rest>
     struct AtHelper<index, T, Rest...> : AtHelper<index - 1, Rest...> {};
+#endif
 }
 
 namespace detail {

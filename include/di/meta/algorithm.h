@@ -290,6 +290,13 @@ using ReverseV = Type<detail::ReverseVHelper<List>>;
 // instantiations, we partition the problem into halves, and construct
 // the correcct sequence using the Concat helper.
 namespace detail {
+#if __has_builtin(__make_integer_seq)
+    template<typename T, T... ns>
+    using ConvertToListV = ListV<ns...>;
+#elif __has_builtin(__integer_pack)
+    template<typename T, auto... ns>
+    using ConvertToListV = ListV<T(ns)...>;
+#else
     template<typename T, typename X, typename Y>
     struct MakeIntegerSequenceConcatHelper;
 
@@ -310,10 +317,17 @@ namespace detail {
 
     template<typename T>
     struct MakeIntegerSequenceHelper<T, 0> : TypeConstant<ListV<>> {};
+#endif
 }
 
 template<typename T, usize count>
+#if __has_builtin(__make_integer_seq)
+using MakeIntegerSequence = __make_integer_seq<detail::ConvertToListV, T, count>;
+#elif __has_builtin(__integer_pack)
+using MakeIntegerSequence = detail::ConvertToListV<T, __integer_pack(count)...>;
+#else
 using MakeIntegerSequence = Type<detail::MakeIntegerSequenceHelper<T, count>>;
+#endif
 
 template<usize count>
 using MakeIndexSequence = MakeIntegerSequence<usize, count>;
