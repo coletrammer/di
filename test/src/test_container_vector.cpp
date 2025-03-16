@@ -58,6 +58,19 @@ constexpr static void basic() {
     ASSERT(v.empty());
 }
 
+constexpr static void emplace_many() {
+    auto v = di::Vector<int> {};
+    v.push_back(0);
+
+    for (auto i : di::range(1, 50) | di::reverse) {
+        auto* it = v.emplace(v.begin() + 1, i);
+        ASSERT_EQ(*it, i);
+    }
+
+    auto expected = di::range(50) | di::to<di::Vector>();
+    ASSERT_EQ(v, expected);
+}
+
 constexpr static void vector2d() {
     auto v = di::Vector<di::Vector<int>> {};
     v.resize(10);
@@ -265,6 +278,7 @@ constexpr static void allocate() {
 }
 
 TESTC(container_vector, basic)
+TESTC(container_vector, emplace_many)
 TESTC(container_vector, vector2d)
 TESTC(container_vector, reserve)
 TESTC(container_vector, move_only)

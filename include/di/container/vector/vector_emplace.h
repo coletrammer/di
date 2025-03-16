@@ -41,7 +41,7 @@ constexpr auto emplace(Vec& vector, CIter cposition, Args&&... args) -> G {
             new_vector.assume_size(new_size);
             vector.assume_size(0);
             util::swap(vector, new_vector);
-            return next_in;
+            return next_out;
         } | try_infallible;
     }
 
