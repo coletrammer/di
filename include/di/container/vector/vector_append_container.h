@@ -30,12 +30,14 @@ template<concepts::detail::MutableVector Vec, concepts::InputContainer Con, type
 requires(concepts::ContainerCompatible<Con, T>)
 constexpr auto insert_container(Vec& vector, Cit it, Con&& container) -> R {
     auto start_offset = it - vector::begin(vector);
+    auto end_offset = start_offset;
     return invoke_as_fallible([&] {
                return container::sequence(util::forward<Con>(container), [&]<typename X>(X&& value) {
-                   return as_fallible(vector::emplace(vector, it++, util::forward<X>(value)));
+                   auto jt = vector::begin(vector) + end_offset;
+                   end_offset++;
+                   return as_fallible(vector::emplace(vector, jt, util::forward<X>(value)));
                });
            }) % [&] {
-        auto end_offset = it - vector::begin(vector);
         return View {
             vector::begin(vector) + start_offset,
             vector::begin(vector) + end_offset,
