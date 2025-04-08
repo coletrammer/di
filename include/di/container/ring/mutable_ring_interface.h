@@ -105,6 +105,12 @@ public:
         return ring::emplace(self(), position, util::forward<Args>(args)...);
     }
 
+    template<concepts::InputContainer Con>
+    requires(concepts::ContainerCompatible<Con, Value>)
+    constexpr auto insert_container(ConstIterator it, Con&& container) {
+        return ring::insert_container(self(), it, util::forward<Con>(container));
+    }
+
     constexpr auto erase(ConstIterator position) { return ring::erase(self(), position); }
     constexpr auto erase(ConstIterator start, ConstIterator end) { return ring::erase(self(), start, end); }
 

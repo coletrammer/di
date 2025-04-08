@@ -8,6 +8,7 @@
 #include "di/container/ring/mutable_ring.h"
 #include "di/container/ring/ring_iterator.h"
 #include "di/container/vector/vector_resize.h"
+#include "di/container/view/view.h"
 #include "di/util/create.h"
 #include "di/vocab/expected/prelude.h"
 
@@ -90,6 +91,30 @@ template<concepts::detail::ConstantRing Ring>
 constexpr auto iterator(Ring const& ring, usize index) {
     DI_ASSERT(index <= ring::size(ring));
     return ring::begin(ring) + index;
+}
+
+template<concepts::detail::MutableRing Ring, typename Value = meta::detail::RingValue<Ring>>
+constexpr auto erase(Ring& ring, RingIterator<Value const> first, RingIterator<Value const> last) {
+    if (first == last) {
+        return ring::iterator(ring, first);
+    }
+
+    // Rotate the range [first, last) to the end of the buffer.
+    auto const first_position = first - ring::begin(ring);
+    auto const to_remove = last - first;
+    auto [new_tail, end] = container::rotate(ring::iterator(ring, first), ring::iterator(ring, last), ring::end(ring));
+
+    // Destroy the trailing elements.
+    container::destroy(new_tail, end);
+
+    ring.assume_size(ring::size(ring) - to_remove);
+    ring.assume_tail((ring.tail() + ring.capacity() - to_remove) % ring.capacity());
+    return ring::iterator(ring, first_position);
+}
+
+template<concepts::detail::MutableRing Ring, typename Value = meta::detail::RingValue<Ring>>
+constexpr auto erase(Ring& ring, RingIterator<Value const> citerator) {
+    return ring::erase(ring, citerator, citerator + 1);
 }
 
 constexpr void clear(concepts::detail::MutableRing auto& ring) {
@@ -208,28 +233,32 @@ constexpr auto emplace(Ring& ring, RingIterator<T const> it, Args&&... args) {
     } | try_infallible;
 }
 
-template<concepts::detail::MutableRing Ring, typename Value = meta::detail::RingValue<Ring>>
-constexpr auto erase(Ring& ring, RingIterator<Value const> first, RingIterator<Value const> last) {
-    if (first == last) {
-        return ring::iterator(ring, first);
-    }
-
-    // Rotate the range [first, last) to the end of the buffer.
-    auto const first_position = first - ring::begin(ring);
-    auto const to_remove = last - first;
-    auto [new_tail, end] = container::rotate(ring::iterator(ring, first), ring::iterator(ring, last), ring::end(ring));
-
-    // Destroy the trailing elements.
-    container::destroy(new_tail, end);
-
-    ring.assume_size(ring::size(ring) - to_remove);
-    ring.assume_tail((ring.tail() + ring.capacity() - to_remove) % ring.capacity());
-    return ring::iterator(ring, first_position);
-}
-
-template<concepts::detail::MutableRing Ring, typename Value = meta::detail::RingValue<Ring>>
-constexpr auto erase(Ring& ring, RingIterator<Value const> citerator) {
-    return ring::erase(ring, citerator, citerator + 1);
+template<concepts::detail::MutableRing Ring, concepts::InputContainer Con, typename T = meta::detail::RingValue<Ring>,
+         typename R = meta::detail::RingAllocResult<Ring, di::View<RingIterator<T>, RingIterator<T>>>>
+requires(concepts::ContainerCompatible<Con, T>)
+constexpr auto insert_container(Ring& ring, RingIterator<T const> it, Con&& container) -> R {
+    auto position = it - ring::begin(ring);
+    auto old_size = ring::size(ring);
+    auto inserted = usize(0);
+    return invoke_as_fallible([&] {
+               return container::sequence(util::forward<Con>(container), [&]<typename X>(X&& value) {
+                   inserted++;
+                   return as_fallible(ring::emplace_back(ring, util::forward<X>(value)));
+               });
+           })
+               .transform_error([&] {
+                   // On errors, remove any inserted elements.
+                   auto& cring = di::as_const(ring);
+                   ring::erase(ring, ring::begin(cring) + old_size, ring::end(cring));
+               })
+               .transform([&] {
+                   // Rotate elements into place.
+                   auto start = ring::begin(ring) + position;
+                   auto mid = ring::end(ring) - inserted;
+                   di::rotate(start, mid, ring::end(ring));
+                   return di::View { start, start + inserted };
+               }) |
+           try_infallible;
 }
 
 constexpr auto make_contigous(concepts::detail::MutableRing auto& ring) {

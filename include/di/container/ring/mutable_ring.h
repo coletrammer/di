@@ -12,6 +12,7 @@ concept MutableRing = MutableVector<T> && ConstantRing<T> && requires(T& lvalue,
 }
 
 namespace di::meta::detail {
-template<concepts::detail::MutableVector T>
-using RingAllocResult = decltype(util::declval<T&>().reserve_from_nothing(util::declval<size_t>()));
+template<concepts::detail::MutableVector T, typename Value = void>
+using RingAllocResult =
+    meta::LikeExpected<decltype(util::declval<T&>().reserve_from_nothing(util::declval<size_t>())), Value>;
 }

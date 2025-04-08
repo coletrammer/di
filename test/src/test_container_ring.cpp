@@ -75,6 +75,20 @@ constexpr static void basic() {
     ASSERT(v.empty());
 }
 
+constexpr static void insert_container() {
+    auto v = di::Ring<int> {};
+    auto [a, b] = v.insert_container(v.begin(), di::range(5));
+    ASSERT_EQ(a, v.iterator(0));
+    ASSERT_EQ(b, v.iterator(5));
+    ASSERT_EQ(v, (di::Array { 0, 1, 2, 3, 4 } | di::to<di::Ring>()));
+
+    auto [c, d] = v.insert_container(v.iterator(2), di::range(20));
+    ASSERT_EQ(c, v.iterator(2));
+    ASSERT_EQ(d, v.iterator(22));
+    ASSERT_EQ(v, (di::Array { 0, 1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 3, 4 } |
+                  di::to<di::Ring>()));
+}
+
 constexpr static void reserve() {
     auto v = di::Ring<int> {};
     v.push_back(0);
@@ -213,6 +227,7 @@ constexpr static void static_() {
 }
 
 TESTC(container_ring, basic)
+TESTC(container_ring, insert_container)
 TESTC(container_ring, reserve)
 TESTC(container_ring, move_only)
 TESTC(container_ring, to)
