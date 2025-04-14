@@ -91,13 +91,13 @@ public:
 
     template<typename... Args>
     requires(concepts::ConstructibleFrom<T, Args...>)
-    constexpr Optional(types::InPlace, Args&&... args) {
+    constexpr explicit Optional(types::InPlace, Args&&... args) {
         emplace(util::forward<Args>(args)...);
     }
 
     template<typename U, typename... Args>
     requires(concepts::ConstructibleFrom<T, std::initializer_list<U>, Args...>)
-    constexpr Optional(types::InPlace, std::initializer_list<U> list, Args&&... args) {
+    constexpr explicit Optional(types::InPlace, std::initializer_list<U> list, Args&&... args) {
         emplace(list, util::forward<Args>(args)...);
     }
 
@@ -123,6 +123,8 @@ public:
     {
         if (other.has_value()) {
             emplace(other.value());
+        } else {
+            reset();
         }
         return *this;
     }
@@ -132,6 +134,8 @@ public:
     {
         if (other.has_value()) {
             emplace(util::move(other).value());
+        } else {
+            reset();
         }
         return *this;
     }
@@ -149,6 +153,8 @@ public:
     constexpr auto operator=(Optional<U> const& other) -> Optional& {
         if (other.has_value()) {
             emplace(other.value());
+        } else {
+            reset();
         }
         return *this;
     }
@@ -158,6 +164,8 @@ public:
     constexpr auto operator=(Optional<U>&& other) -> Optional& {
         if (other.has_value()) {
             emplace(util::move(other).value());
+        } else {
+            reset();
         }
         return *this;
     }

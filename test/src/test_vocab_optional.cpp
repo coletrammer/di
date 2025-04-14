@@ -110,6 +110,24 @@ constexpr static void trivial() {
     ASSERT(!z.has_value());
 }
 
+struct NonTrivial {
+    int x { 0 };
+
+    constexpr explicit NonTrivial(int x) : x(x) {}
+    constexpr NonTrivial(NonTrivial&& other) : x(other.x) { other.x = 0; }
+
+    constexpr ~NonTrivial() { x = 1; }
+};
+
+constexpr static void nontrivial() {
+    auto a = di::Optional<NonTrivial>();
+    a = NonTrivial(2);
+    ASSERT(a.has_value());
+
+    a = {};
+    ASSERT(!a);
+}
+
 struct M {
     constexpr M() = default;
     constexpr ~M() = default;
@@ -281,6 +299,7 @@ TESTC(vocab_optional, conversions)
 TESTC(vocab_optional, make_optional)
 TESTC(vocab_optional, references)
 TESTC(vocab_optional, trivial)
+TESTC(vocab_optional, nontrivial)
 TESTC(vocab_optional, monad)
 TESTC(vocab_optional, swap)
 TESTC(vocab_optional, compare)
