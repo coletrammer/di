@@ -19,6 +19,7 @@
 #include "di/reflect/enumerator.h"
 #include "di/reflect/field.h"
 #include "di/reflect/reflect.h"
+#include "di/reflect/type_name.h"
 #include "di/serialization/serialize.h"
 #include "di/serialization/serialize_string.h"
 #include "di/util/declval.h"
@@ -26,12 +27,30 @@
 #include "di/util/reference_wrapper.h"
 #include "di/util/scope_value_change.h"
 #include "di/vocab/error/result.h"
+#include "di/vocab/tuple/tuple.h"
 #include "di/vocab/tuple/tuple_element.h"
 #include "di/vocab/tuple/tuple_for_each.h"
 #include "di/vocab/tuple/tuple_sequence.h"
+#include "di/vocab/variant/variant_types.h"
+#include "di/vocab/variant/visit.h"
 
 namespace di::serialization {
 struct JsonFormat;
+
+namespace detail {
+    template<typename S, typename T>
+    struct AllSerializable {
+        constexpr static auto value = false;
+    };
+
+    template<typename S, typename... Types>
+    struct AllSerializable<S, meta::List<Types...>> {
+        constexpr static auto value = (concepts::Serializable<Types, S> && ...);
+    };
+
+    template<typename S, concepts::TypeList T>
+    constexpr static auto all_serializable = AllSerializable<S, T>::value;
+}
 
 class JsonSerializerConfig {
 public:
@@ -220,6 +239,40 @@ public:
         } else if constexpr (M::is_integer()) {
             return serialize_number(M::get(value));
         }
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    requires(M::is_tuple() && detail::all_serializable<JsonSerializer, meta::TupleElements<T>>)
+    constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer> {
+        return serialize_array([&](auto& serializer) {
+            return di::tuple_sequence<meta::WriterResult<void, Writer>>(
+                [&](auto&& element) -> meta::WriterResult<void, Writer> {
+                    return serialization::serialize(serializer, element);
+                },
+                M::get(value));
+        });
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    requires(M::is_variant() && detail::all_serializable<JsonSerializer, meta::VariantTypes<T>>)
+    constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer> {
+        return serialize_object([&](auto& serializer) {
+            return di::visit(
+                [&]<typename U>(U&& element) -> meta::WriterResult<void, Writer> {
+                    constexpr auto name = container::fixed_string_to_utf8_string_view<di::type_name<U>>();
+                    return serializer.serialize(name, element);
+                },
+                M::get(value));
+        });
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    requires(M::is_box() && concepts::Serializable<meta::Type<meta::RemoveCVRef<T>>, JsonSerializer>)
+    constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer> {
+        if (!value) {
+            return serialize_null();
+        }
+        return serialization::serialize(*this, *value);
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>

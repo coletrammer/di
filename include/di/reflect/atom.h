@@ -4,6 +4,8 @@
 #include "di/meta/language.h"
 #include "di/meta/operations.h"
 #include "di/meta/util.h"
+#include "di/vocab/pointer/box.h"
+#include "di/vocab/variant/variant_like.h"
 
 namespace di::reflection {
 template<typename T>
@@ -28,13 +30,20 @@ struct Atom {
     constexpr static auto is_integer() -> bool { return concepts::Integer<T>; }
     constexpr static auto is_bool() -> bool { return concepts::SameAs<T, bool>; }
     constexpr static auto is_string() -> bool { return concepts::detail::ConstantString<T>; }
-    constexpr static auto is_list() -> bool { return concepts::Container<T> && !is_string() && !is_map(); }
+    constexpr static auto is_list() -> bool {
+        return concepts::Container<T> && !is_string() && !is_box() && !is_map() && !is_tuple();
+    }
+    constexpr static auto is_tuple() -> bool {
+        return !is_box() && !is_string() && !is_map() && concepts::TupleLike<T>;
+    }
     constexpr static auto is_map() -> bool {
         return requires {
             requires concepts::Container<T> && concepts::TupleLike<meta::ContainerValue<T>> &&
                          meta::TupleSize<meta::ContainerValue<T>> == 2;
         };
     }
+    constexpr static auto is_variant() -> bool { return concepts::VariantLike<T>; }
+    constexpr static auto is_box() -> bool { return concepts::InstanceOf<T, Box>; }
 
     auto operator==(Atom const&) const -> bool = default;
     auto operator<=>(Atom const&) const = default;

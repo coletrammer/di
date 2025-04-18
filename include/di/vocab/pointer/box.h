@@ -27,6 +27,8 @@ struct DefaultDelete {
 template<typename T, typename Deleter = DefaultDelete<T>>
 class Box {
 public:
+    using Type = T;
+
     Box()
     requires(concepts::DefaultConstructible<Deleter> && !concepts::Pointer<Deleter>)
     = default;

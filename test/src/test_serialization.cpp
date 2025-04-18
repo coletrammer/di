@@ -130,12 +130,16 @@ struct MySuperType {
     di::Array<di::Tuple<di::StringView, int>, 3> map;
     MyEnum my_enum;
     di::Optional<int> optional;
+    di::Tuple<i32, di::String> tuple;
+    di::Variant<MyEnum, MyType> variant;
+    di::Box<i32> box;
 
     constexpr friend auto tag_invoke(di::Tag<di::reflect>, di::InPlaceType<MySuperType>) {
         return di::make_fields<"MySuperType">(
             di::field<"my_type", &MySuperType::my_type>, di::field<"array", &MySuperType::array>,
             di::field<"map", &MySuperType::map>, di::field<"my_enum", &MySuperType::my_enum>,
-            di::field<"optional", &MySuperType::optional>);
+            di::field<"optional", &MySuperType::optional>, di::field<"tuple", &MySuperType::tuple>,
+            di::field<"variant", &MySuperType::variant>, di::field<"box", &MySuperType::box>);
     }
 };
 
@@ -146,40 +150,16 @@ constexpr static void json_reflect() {
         ASSERT_EQ(result, R"({"x":1,"y":2,"z":3,"w":true,"a":"hello"})"_sv);
     }
     {
-        auto const x = MySuperType { MyType { 1, 2, 3, true, "hello"_sv },
-                                     { 1, 2, 3 },
-                                     { di::Tuple { "a"_sv, 1 }, di::Tuple { "b"_sv, 2 }, di::Tuple { "c"_sv, 3 } },
-                                     MyEnum::Bar,
-                                     di::nullopt };
-
-        auto result = di::to_json_string(x, di::JsonSerializerConfig().pretty().indent_width(4));
-        ASSERT_EQ(result, R"({
-    "my_type": {
-        "x": 1,
-        "y": 2,
-        "z": 3,
-        "w": true,
-        "a": "hello"
-    },
-    "array": [
-        1,
-        2,
-        3
-    ],
-    "map": {
-        "a": 1,
-        "b": 2,
-        "c": 3
-    },
-    "my_enum": "Bar"
-})"_sv);
-    }
-    {
-        auto const x = MySuperType { MyType { 1, 2, 3, true, "hello"_sv },
-                                     { 1, 2, 3 },
-                                     { di::Tuple { "a"_sv, 1 }, di::Tuple { "b"_sv, 2 }, di::Tuple { "c"_sv, 3 } },
-                                     MyEnum::Bar,
-                                     5 };
+        auto const x = MySuperType {
+            MyType { 1, 2, 3, true, "hello"_sv },
+            { 1, 2, 3 },
+            { di::Tuple { "a"_sv, 1 }, di::Tuple { "b"_sv, 2 }, di::Tuple { "c"_sv, 3 } },
+            MyEnum::Bar,
+            di::nullopt,
+            { 5, "y"_s },
+            MyEnum::Foo,
+            di::make_box<int>(4),
+        };
 
         auto result = di::to_json_string(x, di::JsonSerializerConfig().pretty().indent_width(4));
         ASSERT_EQ(result, R"({
@@ -201,7 +181,57 @@ constexpr static void json_reflect() {
         "c": 3
     },
     "my_enum": "Bar",
-    "optional": 5
+    "tuple": [
+        5,
+        "y"
+    ],
+    "variant": {
+        "MyEnum": "Foo"
+    },
+    "box": 4
+})"_sv);
+    }
+    {
+        auto const x = MySuperType {
+            MyType { 1, 2, 3, true, "hello"_sv },
+            { 1, 2, 3 },
+            { di::Tuple { "a"_sv, 1 }, di::Tuple { "b"_sv, 2 }, di::Tuple { "c"_sv, 3 } },
+            MyEnum::Bar,
+            5,
+            { 6, "yyy"_s },
+            MyEnum::Baz,
+            nullptr,
+        };
+
+        auto result = di::to_json_string(x, di::JsonSerializerConfig().pretty().indent_width(4));
+        ASSERT_EQ(result, R"({
+    "my_type": {
+        "x": 1,
+        "y": 2,
+        "z": 3,
+        "w": true,
+        "a": "hello"
+    },
+    "array": [
+        1,
+        2,
+        3
+    ],
+    "map": {
+        "a": 1,
+        "b": 2,
+        "c": 3
+    },
+    "my_enum": "Bar",
+    "optional": 5,
+    "tuple": [
+        6,
+        "yyy"
+    ],
+    "variant": {
+        "MyEnum": "Baz"
+    },
+    "box": null
 })"_sv);
     }
 }

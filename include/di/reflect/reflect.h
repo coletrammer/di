@@ -29,7 +29,7 @@ namespace detail {
         template<typename T, typename U = meta::RemoveCVRef<T>>
         requires(!concepts::TagInvocable<ReflectFunction, InPlaceType<U>> &&
                  (concepts::SameAs<U, bool> || concepts::Integer<U> || concepts::detail::ConstantString<U> ||
-                  concepts::Container<U>) )
+                  concepts::Container<U> || concepts::TupleLike<U> || concepts::VariantLike<U>) )
         constexpr auto operator()(InPlaceType<T>) const -> decltype(auto) {
             return Atom<U> {};
         }

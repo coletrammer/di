@@ -25,7 +25,10 @@ struct Enumerator {
     constexpr static auto is_bool() -> bool { return false; }
     constexpr static auto is_string() -> bool { return false; }
     constexpr static auto is_list() -> bool { return false; }
+    constexpr static auto is_tuple() -> bool { return false; }
     constexpr static auto is_map() -> bool { return false; }
+    constexpr static auto is_variant() -> bool { return false; }
+    constexpr static auto is_box() -> bool { return false; }
 
     auto operator==(Enumerator const&) const -> bool = default;
     auto operator<=>(Enumerator const&) const = default;
@@ -57,7 +60,10 @@ struct Enumerators : vocab::Tuple<Es...> {
     constexpr static auto is_bool() -> bool { return false; }
     constexpr static auto is_string() -> bool { return false; }
     constexpr static auto is_list() -> bool { return false; }
+    constexpr static auto is_tuple() -> bool { return false; }
     constexpr static auto is_map() -> bool { return false; }
+    constexpr static auto is_variant() -> bool { return false; }
+    constexpr static auto is_box() -> bool { return false; }
 };
 
 namespace detail {
