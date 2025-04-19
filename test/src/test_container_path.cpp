@@ -152,6 +152,8 @@ constexpr static void path_addition() {
     ASSERT_EQ(b.data(), "/hello/world"_tsv);
     ASSERT_EQ(c.append("hello/world"_pv), "opt/hello/world"_pv);
     ASSERT_EQ(c.data(), "opt/hello/world"_tsv);
+    ASSERT_EQ(c.concat("_test"_pv), "opt/hello/world_test"_pv);
+    ASSERT_EQ(c.data(), "opt/hello/world_test"_tsv);
 }
 
 constexpr static void strip_prefix() {

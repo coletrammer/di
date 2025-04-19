@@ -98,9 +98,9 @@ public:
     template<concepts::ContainerCompatible<meta::EncodingCodePoint<Enc>> Con>
     requires(concepts::SameAs<meta::Encoding<Con>, Enc>)
     constexpr auto concat(Con&& container) -> decltype(auto) {
-        return m_data.append(util::forward<Con>(container)) % [&](auto&&) {
+        return as_fallible(m_data.append(util::forward<Con>(container))) % [&](auto&&) {
             return util::ref(*this);
-        };
+        } | try_infallible;
     }
     constexpr auto concat(PathViewImpl<Enc> view) -> decltype(auto) { return concat(view.data()); }
     constexpr auto concat(PathImpl const& other) -> decltype(auto) { return concat(other.data()); }
