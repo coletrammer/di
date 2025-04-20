@@ -19,6 +19,7 @@ private:
     using CodePoint = meta::EncodingCodePoint<Enc>;
     using ViewIter = meta::ContainerIterator<View>;
     using PathView = PathViewImpl<Enc>;
+    using Iterator = PathIterator<Enc>;
 
     constexpr auto self() -> Self& { return static_cast<Self&>(*this); }
     constexpr auto self() const -> Self const& { return static_cast<Self const&>(*this); }
@@ -114,6 +115,11 @@ protected:
 private:
     constexpr friend auto operator==(Self const& a, Self const& b) -> bool { return container::equal(a, b); }
     constexpr friend auto operator<=>(Self const& a, Self const& b) { return container::compare(a, b); }
+
+    constexpr friend auto tag_invoke(types::Tag<container::reconstruct>, InPlaceType<Self>, Iterator first,
+                                     Iterator last) -> PathView {
+        return PathView(util::move(first), util::move(last));
+    }
 
     constexpr static auto split_filename(View filename) -> Tuple<Optional<View>, Optional<View>> {
         auto last_dot_view = filename.rfind(CodePoint('.'));

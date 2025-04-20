@@ -24,6 +24,7 @@ private:
     using View = string::StringViewImpl<Enc>;
     using CodePoint = meta::EncodingCodePoint<Enc>;
     using ViewIter = meta::ContainerIterator<View>;
+    using Iterator = PathIterator<Enc>;
 
 public:
     using Encoding = Enc;
@@ -31,6 +32,9 @@ public:
     PathViewImpl() = default;
 
     constexpr PathViewImpl(View view) : m_view(view) { this->compute_first_component_end(); }
+
+    constexpr PathViewImpl(Iterator start, Iterator end)
+        : PathViewImpl(View(encoding::assume_valid, start.current_data(), end.current_data())) {}
 
     constexpr auto data() const -> View { return m_view; }
 
