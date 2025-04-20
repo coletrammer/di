@@ -159,7 +159,7 @@ namespace detail {
     struct DeserializeFunction {
         template<typename D>
         requires(concepts::Deserializable<T, D>)
-        constexpr auto operator()(D&& deserializer) const {
+        constexpr auto operator()(D&& deserializer) const -> meta::DeserializeResult<D, T> {
             return deserialize_in_place(deserializer, in_place_type<T>);
         }
 

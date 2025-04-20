@@ -5,6 +5,7 @@
 #include "di/container/string/fixed_string.h"
 #include "di/container/string/fixed_string_to_utf8_string_view.h"
 #include "di/container/string/string_view.h"
+#include "di/function/index_dispatch.h"
 #include "di/io/interface/reader.h"
 #include "di/io/prelude.h"
 #include "di/io/string_reader.h"
@@ -12,6 +13,7 @@
 #include "di/meta/operations.h"
 #include "di/platform/compiler.h"
 #include "di/platform/prelude.h"
+#include "di/reflect/type_name.h"
 #include "di/serialization/deserialize.h"
 #include "di/serialization/deserialize_string.h"
 #include "di/serialization/json_serializer.h"
@@ -21,12 +23,29 @@
 #include "di/util/exchange.h"
 #include "di/util/reference_wrapper.h"
 #include "di/util/to_underlying.h"
+#include "di/vocab/array/array.h"
 #include "di/vocab/optional/nullopt.h"
 #include "di/vocab/optional/optional_forward_declaration.h"
+#include "di/vocab/pointer/box.h"
 #include "di/vocab/tuple/tuple_for_each.h"
 #include "di/vocab/tuple/tuple_sequence.h"
 
 namespace di::serialization {
+namespace detail {
+    template<typename S, typename T>
+    struct AllDeserializable {
+        constexpr static auto value = false;
+    };
+
+    template<typename S, typename... Types>
+    struct AllDeserializable<S, meta::List<Types...>> {
+        constexpr static auto value = (concepts::Deserializable<Types, S> && ...);
+    };
+
+    template<typename S, concepts::TypeList T>
+    constexpr static auto all_deserializable = AllDeserializable<S, T>::value;
+}
+
 /// @brief A deserializer for the JSON format.
 ///
 /// @tparam Reader The type of the reader to read from.
@@ -35,7 +54,7 @@ namespace di::serialization {
 template<concepts::Impl<io::Reader> Reader>
 class JsonDeserializer {
 private:
-    template<typename T>
+    template<typename T = void>
     using Result = meta::ReaderResult<T, Reader>;
 
 public:
@@ -141,6 +160,88 @@ public:
             DI_TRY(skip_whitespace());
             return result;
         }
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    requires(M::is_tuple() && detail::all_deserializable<JsonDeserializer, meta::TupleElements<T>>)
+    constexpr auto deserialize(InPlaceType<T>, M) -> Result<T> {
+        // NOTE: for now, this requires T be default constructible.
+        auto result = T {};
+
+        DI_TRY(skip_whitespace());
+        DI_TRY(expect('['));
+
+        auto first = true;
+        DI_TRY(vocab::tuple_sequence<Result<>>(
+            [&]<typename Value>(Value& value) -> Result<> {
+                DI_TRY(skip_whitespace());
+                auto code_point = DI_TRY(peek_next_code_point());
+                if (!code_point) {
+                    return vocab::Unexpected(BasicError::InvalidArgument);
+                }
+                // Indicates we've ran out of arguments
+                if (*code_point == U']') {
+                    return vocab::Unexpected(BasicError::InvalidArgument);
+                }
+                if (!util::exchange(first, false)) {
+                    DI_TRY(expect(U','));
+                }
+
+                value = DI_TRY(serialization::deserialize<Value>(*this));
+                return {};
+            },
+            result));
+
+        DI_TRY(skip_whitespace());
+        DI_TRY(expect(']'));
+        DI_TRY(skip_whitespace());
+        return result;
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    requires(M::is_variant() && detail::all_deserializable<JsonDeserializer, meta::VariantTypes<T>>)
+    constexpr auto deserialize(InPlaceType<T>, M) -> Result<T> {
+        constexpr auto possible_keys = []<typename... Types>(meta::List<Types...>) {
+            return Array { container::fixed_string_to_utf8_string_view<reflection::type_name<Types>>()... };
+        }(meta::VariantTypes<T> {});
+
+        DI_TRY(skip_whitespace());
+        DI_TRY(expect('{'));
+
+        auto key = DI_TRY(deserialize_string());
+        DI_TRY(skip_whitespace());
+        DI_TRY(expect(U':'));
+        DI_TRY(skip_whitespace());
+
+        auto it = di::find(possible_keys, key);
+        if (it == possible_keys.end()) {
+            return di::Unexpected(di::BasicError::InvalidArgument);
+        }
+
+        auto result = TRY(function::index_dispatch<Result<T>, meta::Size<meta::VariantTypes<T>>>(
+            usize(it - possible_keys.begin()), [&]<usize index>(Constexpr<index>) -> Result<T> {
+                using Value = meta::At<meta::VariantTypes<T>, index>;
+                return serialization::deserialize<Value>(*this);
+            }));
+
+        DI_TRY(skip_whitespace());
+        DI_TRY(expect('}'));
+        DI_TRY(skip_whitespace());
+        return result;
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M, typename U = meta::Type<meta::RemoveCVRef<T>>>
+    requires(M::is_box() && concepts::Deserializable<U, JsonDeserializer>)
+    constexpr auto deserialize(InPlaceType<T>, M) -> Result<T> {
+        DI_TRY(skip_whitespace());
+
+        // First check for null, then parse the underlying type.
+        auto code_point = DI_TRY(peek_next_code_point());
+        if (code_point == U'n') {
+            DI_TRY(deserialize_null());
+            return nullptr;
+        }
+        return di::make_box<U>(DI_TRY(di::deserialize<U>(*this)));
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>

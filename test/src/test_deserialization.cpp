@@ -110,13 +110,19 @@ struct MySuperType {
     di::Vector<int> array;
     di::TreeMap<di::String, int> map;
     MyEnum my_enum;
+    di::Optional<int> optional;
+    di::Tuple<i32, di::String> tuple;
+    di::Variant<MyEnum, MyType> variant;
+    di::Box<i32> box;
 
-    auto operator==(MySuperType const& other) const -> bool = default;
+    auto operator==(MySuperType const&) const -> bool = default;
 
     constexpr friend auto tag_invoke(di::Tag<di::reflect>, di::InPlaceType<MySuperType>) {
         return di::make_fields<"MySuperType">(
             di::field<"my_type", &MySuperType::my_type>, di::field<"array", &MySuperType::array>,
-            di::field<"map", &MySuperType::map>, di::field<"my_enum", &MySuperType::my_enum>);
+            di::field<"map", &MySuperType::map>, di::field<"my_enum", &MySuperType::my_enum>,
+            di::field<"optional", &MySuperType::optional>, di::field<"tuple", &MySuperType::tuple>,
+            di::field<"variant", &MySuperType::variant>, di::field<"box", &MySuperType::box>);
     }
 };
 
@@ -162,15 +168,37 @@ constexpr static void json_reflect() {
             "hello": 1,
             "world": 2
         },
-        "my_enum": "Bar"
+        "my_enum": "Bar",
+        "optional": 4,
+        "tuple": [
+            5,
+            "y"
+        ],
+        "variant": {
+            "MyEnum": "Foo"
+        },
+        "box": null
     })"_sv);
 
-        auto e =
-            MySuperType { MyType { 1, 2, 3, true, "hello"_sv.to_owned() }, di::Array { 1, 2, 3 } | di::to<di::Vector>(),
-                          di::Array { di::Tuple { "hello"_sv.to_owned(), 1 }, di::Tuple { "world"_sv.to_owned(), 2 } } |
-                              di::as_rvalue | di::to<di::TreeMap>(),
-                          MyEnum::Bar };
+        auto e = MySuperType {
+            MyType { 1, 2, 3, true, "hello"_sv.to_owned() },
+            di::Array { 1, 2, 3 } | di::to<di::Vector>(),
+            di::Array { di::Tuple { "hello"_sv.to_owned(), 1 }, di::Tuple { "world"_sv.to_owned(), 2 } } |
+                di::as_rvalue | di::to<di::TreeMap>(),
+            MyEnum::Bar,
+            4,
+            di::Tuple { 5, "y"_s },
+            MyEnum::Foo,
+            nullptr,
+        };
+
         ASSERT_EQ(r, e);
+    }
+
+    {
+        auto r = *di::from_json_string<di::Box<int>>("4"_sv);
+        ASSERT(r);
+        ASSERT_EQ(*r, 4);
     }
 }
 
