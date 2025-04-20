@@ -116,6 +116,8 @@ private:
     }
 
 public:
+    constexpr auto clone() const { return di::create<Self>(*this); }
+
     constexpr void clear() { return string::clear(self()); }
 
     constexpr auto operator[](usize index) -> CodePoint&

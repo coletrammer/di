@@ -125,11 +125,10 @@ public:
 
     constexpr void clear() { m_container.clear(); }
 
-private:
-    constexpr friend auto tag_invoke(types::Tag<util::clone>, Queue const& self)
+    constexpr auto clone()
     requires(concepts::Clonable<Value>)
     {
-        return self | container::to<Queue>();
+        return *this | container::to<Queue>();
     }
 };
 

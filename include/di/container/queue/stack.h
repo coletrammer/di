@@ -92,11 +92,9 @@ public:
 
     constexpr void clear() { m_container.clear(); }
 
-private:
-    constexpr friend auto tag_invoke(types::Tag<util::clone>, Stack const& self) {
-        return self | container::to<Stack>();
-    }
+    constexpr auto clone() const { return *this | container::to<Stack>(); }
 
+private:
     Con m_container {};
 };
 

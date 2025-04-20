@@ -122,15 +122,15 @@ public:
 
     constexpr void clear() { m_container.clear(); }
 
+    constexpr auto clone() {
+        return as_fallible(util::clone(m_container)) % [&](Con&& container) {
+            return PriorityQueue(in_place, util::move(container), m_comp);
+        } | try_infallible;
+    }
+
 private:
     constexpr explicit PriorityQueue(InPlace, Con&& container, Comp const& comp)
         : m_container(util::move(container)), m_comp(comp) {}
-
-    constexpr friend auto tag_invoke(types::Tag<util::clone>, PriorityQueue const& self) {
-        return as_fallible(util::clone(self.m_container)) % [&](Con&& container) {
-            return PriorityQueue(in_place, util::move(container), self.m_comp);
-        } | try_infallible;
-    }
 
     Con m_container {};
     [[no_unique_address]] Comp m_comp {};
