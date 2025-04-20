@@ -14,6 +14,7 @@
 #include "di/meta/vocab.h"
 #include "di/types/in_place.h"
 #include "di/util/addressof.h"
+#include "di/util/clone.h"
 #include "di/util/declval.h"
 #include "di/util/initializer_list.h"
 #include "di/util/move.h"
@@ -168,6 +169,15 @@ public:
             reset();
         }
         return *this;
+    }
+
+    auto clone() const -> Optional
+    requires(concepts::Clonable<T>)
+    {
+        if (has_value()) {
+            return di::clone(value());
+        }
+        return {};
     }
 
     // Accessors
