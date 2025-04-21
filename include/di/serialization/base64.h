@@ -11,7 +11,6 @@
 #include "di/format/prelude.h"
 #include "di/parser/basic/match_zero_or_more.h"
 #include "di/parser/prelude.h"
-#include "di/reflect/atom.h"
 #include "di/vocab/span/prelude.h"
 
 namespace di::serialization {
