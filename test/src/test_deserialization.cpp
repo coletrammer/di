@@ -6,6 +6,7 @@
 #include "di/serialization/json_deserializer.h"
 #include "di/serialization/json_value.h"
 #include "di/test/prelude.h"
+#include "di/util/uuid.h"
 
 namespace deserialization {
 constexpr static void json_value() {
@@ -114,6 +115,7 @@ struct MySuperType {
     di::Tuple<i32, di::String> tuple;
     di::Variant<MyEnum, MyType> variant;
     di::Box<i32> box;
+    di::UUID uuid;
 
     auto operator==(MySuperType const&) const -> bool = default;
 
@@ -122,7 +124,8 @@ struct MySuperType {
             di::field<"my_type", &MySuperType::my_type>, di::field<"array", &MySuperType::array>,
             di::field<"map", &MySuperType::map>, di::field<"my_enum", &MySuperType::my_enum>,
             di::field<"optional", &MySuperType::optional>, di::field<"tuple", &MySuperType::tuple>,
-            di::field<"variant", &MySuperType::variant>, di::field<"box", &MySuperType::box>);
+            di::field<"variant", &MySuperType::variant>, di::field<"box", &MySuperType::box>,
+            di::field<"uuid", &MySuperType::uuid>);
     }
 };
 
@@ -177,7 +180,8 @@ constexpr static void json_reflect() {
         "variant": {
             "MyEnum": "Foo"
         },
-        "box": null
+        "box": null,
+        "uuid": "dfa22e02-ec78-4000-9257-c0b7d69264dd"
     })"_sv);
 
         auto e = MySuperType {
@@ -190,6 +194,7 @@ constexpr static void json_reflect() {
             di::Tuple { 5, "y"_s },
             MyEnum::Foo,
             nullptr,
+            "dfa22e02-ec78-4000-9257-c0b7d69264dd"_uuid,
         };
 
         ASSERT_EQ(r, e);

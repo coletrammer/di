@@ -11,6 +11,7 @@
 #include "di/io/string_reader.h"
 #include "di/meta/core.h"
 #include "di/meta/operations.h"
+#include "di/parser/parse.h"
 #include "di/platform/compiler.h"
 #include "di/platform/prelude.h"
 #include "di/reflect/type_name.h"
@@ -160,6 +161,15 @@ public:
             DI_TRY(skip_whitespace());
             return result;
         }
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    constexpr auto deserialize(InPlaceType<T>, M) -> Result<T>
+    requires(M::is_custom_atom() && requires { di::parse<T>(di::StringView()); })
+    {
+        auto string = DI_TRY(deserialize_string());
+        auto result = DI_TRY(di::parse<T>(string.view()));
+        return result;
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>

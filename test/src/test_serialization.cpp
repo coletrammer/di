@@ -6,6 +6,7 @@
 #include "di/serialization/binary_serializer.h"
 #include "di/serialization/json_value.h"
 #include "di/test/prelude.h"
+#include "di/util/uuid.h"
 
 namespace serialization {
 constexpr static void json_basic() {
@@ -133,13 +134,15 @@ struct MySuperType {
     di::Tuple<i32, di::String> tuple;
     di::Variant<MyEnum, MyType> variant;
     di::Box<i32> box;
+    di::UUID uuid;
 
     constexpr friend auto tag_invoke(di::Tag<di::reflect>, di::InPlaceType<MySuperType>) {
         return di::make_fields<"MySuperType">(
             di::field<"my_type", &MySuperType::my_type>, di::field<"array", &MySuperType::array>,
             di::field<"map", &MySuperType::map>, di::field<"my_enum", &MySuperType::my_enum>,
             di::field<"optional", &MySuperType::optional>, di::field<"tuple", &MySuperType::tuple>,
-            di::field<"variant", &MySuperType::variant>, di::field<"box", &MySuperType::box>);
+            di::field<"variant", &MySuperType::variant>, di::field<"box", &MySuperType::box>,
+            di::field<"uuid", &MySuperType::uuid>);
     }
 };
 
@@ -159,6 +162,7 @@ constexpr static void json_reflect() {
             { 5, "y"_s },
             MyEnum::Foo,
             di::make_box<int>(4),
+            "dfa22e02-ec78-4000-9257-c0b7d69264dd"_uuid,
         };
 
         auto result = di::to_json_string(x, di::JsonSerializerConfig().pretty().indent_width(4));
@@ -188,7 +192,8 @@ constexpr static void json_reflect() {
     "variant": {
         "MyEnum": "Foo"
     },
-    "box": 4
+    "box": 4,
+    "uuid": "dfa22e02-ec78-4000-9257-c0b7d69264dd"
 })"_sv);
     }
     {
@@ -201,6 +206,7 @@ constexpr static void json_reflect() {
             { 6, "yyy"_s },
             MyEnum::Baz,
             nullptr,
+            "dfa22e02-ec78-4000-9257-c0b7d69264dd"_uuid,
         };
 
         auto result = di::to_json_string(x, di::JsonSerializerConfig().pretty().indent_width(4));
@@ -231,7 +237,8 @@ constexpr static void json_reflect() {
     "variant": {
         "MyEnum": "Baz"
     },
-    "box": null
+    "box": null,
+    "uuid": "dfa22e02-ec78-4000-9257-c0b7d69264dd"
 })"_sv);
     }
 }

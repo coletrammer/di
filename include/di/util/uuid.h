@@ -32,6 +32,8 @@ private:
     };
 
 public:
+    using IsAtom = void;
+
     UUID() = default;
 
     constexpr explicit UUID(ByteArray bytes) { *this = util::bit_cast<UUID>(bytes); }

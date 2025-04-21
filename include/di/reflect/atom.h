@@ -44,6 +44,9 @@ struct Atom {
     }
     constexpr static auto is_variant() -> bool { return concepts::VariantLike<T>; }
     constexpr static auto is_box() -> bool { return concepts::InstanceOf<T, Box>; }
+    constexpr static auto is_custom_atom() -> bool {
+        return requires { typename T::IsAtom; };
+    }
 
     auto operator==(Atom const&) const -> bool = default;
     auto operator<=>(Atom const&) const = default;

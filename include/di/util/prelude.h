@@ -39,5 +39,4 @@
 #include "di/util/to_underlying.h"
 #include "di/util/unreachable.h"
 #include "di/util/unwrap_reference.h"
-#include "di/util/uuid.h"
 #include "di/util/voidify.h"

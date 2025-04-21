@@ -35,6 +35,7 @@ struct Field {
     constexpr static auto is_map() -> bool { return false; }
     constexpr static auto is_variant() -> bool { return false; }
     constexpr static auto is_box() -> bool { return false; }
+    constexpr static auto is_custom_atom() -> bool { return false; }
 
     auto operator==(Field const&) const -> bool = default;
     auto operator<=>(Field const&) const = default;
@@ -70,6 +71,7 @@ struct Fields : vocab::Tuple<Fs...> {
     constexpr static auto is_map() -> bool { return false; }
     constexpr static auto is_variant() -> bool { return false; }
     constexpr static auto is_box() -> bool { return false; }
+    constexpr static auto is_custom_atom() -> bool { return false; }
 };
 
 namespace detail {

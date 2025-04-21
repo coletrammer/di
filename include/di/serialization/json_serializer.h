@@ -242,6 +242,14 @@ public:
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>
+    constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer>
+    requires(M::is_custom_atom() && requires { di::to_string(value); })
+    {
+        auto string = di::to_string(value);
+        return serialize_string(string.view());
+    }
+
+    template<typename T, concepts::InstanceOf<reflection::Atom> M>
     requires(M::is_tuple() && detail::all_serializable<JsonSerializer, meta::TupleElements<T>>)
     constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer> {
         return serialize_array([&](auto& serializer) {

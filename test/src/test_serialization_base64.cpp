@@ -1,6 +1,7 @@
 #include "di/container/string/string_view.h"
 #include "di/format/to_string.h"
 #include "di/random/distribution/uniform_int_distribution.h"
+#include "di/random/prelude.h"
 #include "di/serialization/base64.h"
 #include "di/test/prelude.h"
 #include "di/vocab/array/array.h"

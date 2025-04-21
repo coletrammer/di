@@ -3,6 +3,7 @@
 #include "di/container/tree/prelude.h"
 #include "di/container/view/prelude.h"
 #include "di/math/prelude.h"
+#include "di/random/prelude.h"
 #include "di/test/prelude.h"
 
 namespace container_tree_set {

@@ -11,12 +11,15 @@
 #include "di/format/prelude.h"
 #include "di/parser/basic/match_zero_or_more.h"
 #include "di/parser/prelude.h"
+#include "di/reflect/atom.h"
 #include "di/vocab/span/prelude.h"
 
 namespace di::serialization {
 template<concepts::ContainerOf<byte> Con = di::Vector<byte>>
 class Base64 {
 public:
+    using IsAtom = void;
+
     Base64() = default;
 
     constexpr explicit Base64(Con container) : m_container(di::move(container)) {}

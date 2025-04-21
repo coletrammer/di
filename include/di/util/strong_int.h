@@ -43,6 +43,8 @@ namespace detail {
 template<detail::Tag Tag>
 class StrongInt : public detail::Mixin<Tag> {
 public:
+    using IsAtom = void;
+
     using Type = Tag::Type;
     using SSizeType = detail::SSizeType<Tag>;
 
