@@ -25,6 +25,8 @@ public:
         return container::ErasedString(u8"[invalid status code]");
     }
 
+    constexpr auto to_string() const { return message(); }
+
     constexpr auto success() const -> bool { return !empty() && !domain().do_failure(*this); }
     constexpr auto failure() const -> bool { return !empty() && domain().do_failure(*this); }
 

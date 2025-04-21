@@ -168,10 +168,19 @@ constexpr static void reference() {
     ASSERT_EQ(b, 5);
 }
 
+constexpr static void to_string() {
+    auto v = di::Expected<int, int>(2);
+    ASSERT_EQ(di::to_string(v), "2"_sv);
+
+    v = di::Unexpected(4);
+    ASSERT_EQ(di::to_string(v), "Unexpected(4)"_sv);
+}
+
 TESTC(vocab_expected, void_value)
 TESTC(vocab_expected, void_error)
 TESTC(vocab_expected, basic)
 TESTC(vocab_expected, move_only)
 TESTC(vocab_expected, fallible)
 TESTC(vocab_expected, reference)
+TESTC(vocab_expected, to_string)
 }

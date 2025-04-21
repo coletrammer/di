@@ -45,6 +45,8 @@ public:
 
     ~StatusCode() = default;
 
+    constexpr auto to_string() const { return message(); }
+
     constexpr auto message() const {
         if (!this->empty()) {
             return this->domain().do_message(*this);

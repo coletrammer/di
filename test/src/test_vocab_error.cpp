@@ -8,6 +8,7 @@ constexpr static void basic() {
     di::GenericCode e = di::BasicError::ResultOutOfRange;
     ASSERT(!e.success());
     ASSERT_EQ(e.message(), u8"Result out of range"_sv);
+    ASSERT_EQ(di::to_string(e), u8"Result out of range"_sv);
 
     ASSERT_EQ(e, di::BasicError::ResultOutOfRange);
     ASSERT_NOT_EQ(di::BasicError::Success, e);
