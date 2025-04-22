@@ -484,6 +484,31 @@ private:
         return false;
     }
 
+    constexpr auto from_hex_digit(c32 code_point) -> Result<u16> {
+        if (('0'_m - '9'_m)(code_point)) {
+            return u16(code_point - '0');
+        }
+        if (('A'_m - 'F'_m)(code_point)) {
+            return u16(10u + (code_point - 'A'));
+        }
+        if (('a'_m - 'f'_m)(code_point)) {
+            return u16(10u + (code_point - 'a'));
+        }
+        return vocab::Unexpected(BasicError::InvalidArgument);
+    }
+
+    constexpr auto parse_four_hex_digits() -> Result<u16> {
+        auto result = u16(0);
+        result |= DI_TRY(from_hex_digit(DI_TRY(require_next_code_point()))) << 12;
+        result |= DI_TRY(from_hex_digit(DI_TRY(require_next_code_point()))) << 8;
+        result |= DI_TRY(from_hex_digit(DI_TRY(require_next_code_point()))) << 4;
+        result |= DI_TRY(from_hex_digit(DI_TRY(require_next_code_point()))) << 0;
+        return result;
+    }
+
+    constexpr static auto is_high_surrogate(u16 code_unit) -> bool { return (code_unit >> 10) == 0b110110u; }
+    constexpr static auto is_low_surrogate(u16 code_unit) -> bool { return (code_unit >> 10) == 0b110111u; }
+
     constexpr auto deserialize_string() -> Result<json::String> {
         DI_TRY(skip_whitespace());
         DI_TRY(expect(U'"'));
@@ -494,10 +519,64 @@ private:
             if (!code_point || *code_point < 0x20) {
                 return vocab::Unexpected(BasicError::InvalidArgument);
             }
+            if (code_point == U'\\') {
+                auto escaped = DI_TRY(require_next_code_point());
+                switch (escaped) {
+                    case U'"':
+                        string.push_back(U'"');
+                        continue;
+                    case U'\\':
+                        string.push_back(U'\\');
+                        continue;
+                    case U'/':
+                        string.push_back(U'/');
+                        continue;
+                    case U'b':
+                        string.push_back(U'\b');
+                        continue;
+                    case U'f':
+                        string.push_back(U'\f');
+                        continue;
+                    case U'n':
+                        string.push_back(U'\n');
+                        continue;
+                    case U'r':
+                        string.push_back(U'\r');
+                        continue;
+                    case U't':
+                        string.push_back(U'\t');
+                        continue;
+                    case U'u': {
+                        // Escaped unicode sequences are encoded via UTF-16, despite the underlying data being
+                        // encoded in UTF-8.
+                        auto code_point = DI_TRY(parse_four_hex_digits());
+                        if (is_high_surrogate(code_point)) {
+                            // Require a curresponding escaped low surrogate
+                            DI_TRY(expect(U'\\'));
+                            DI_TRY(expect(U'u'));
+                            auto low_code_point = DI_TRY(parse_four_hex_digits());
+                            if (!is_low_surrogate(low_code_point)) {
+                                return vocab::Unexpected(BasicError::InvalidArgument);
+                            }
+                            auto actual_code_point =
+                                c32((code_point - 0xD800u) << 10) + c32(low_code_point - 0xDC00u) + c32(0x10000);
+                            string.push_back(actual_code_point);
+                            continue;
+                        }
+                        if (is_low_surrogate(code_point)) {
+                            return vocab::Unexpected(BasicError::InvalidArgument);
+                        }
+                        string.push_back(c32(code_point));
+                        continue;
+                    }
+                    default:
+                        return vocab::Unexpected(BasicError::InvalidArgument);
+                }
+            }
+
             if (*code_point == U'"') {
                 break;
             }
-            // FIXME: handle escape sequences.
             string.push_back(*code_point);
         }
         return string;

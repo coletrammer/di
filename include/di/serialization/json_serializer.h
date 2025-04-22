@@ -1,6 +1,7 @@
 #pragma once
 
 #include "di/container/action/sequence.h"
+#include "di/container/interface/access.h"
 #include "di/container/string/fixed_string_to_utf8_string_view.h"
 #include "di/container/string/string_impl.h"
 #include "di/container/string/string_view.h"
@@ -140,6 +141,14 @@ private:
         util::ReferenceWrapper<JsonSerializer> m_serializer;
     };
 
+    constexpr static auto to_hex_digit(u8 value) -> c8 {
+        DI_ASSERT(value < 16);
+        if (value < 10) {
+            return value + c8('0');
+        }
+        return (value - 10) + c8('A');
+    }
+
 public:
     using SerializationFormat = JsonFormat;
 
@@ -166,8 +175,42 @@ public:
         DI_TRY(serialize_comma());
 
         DI_TRY(io::write_exactly(m_writer, '"'));
-        // FIXME: escape the string if needed.
-        DI_TRY(io::write_exactly(m_writer, view));
+        for (auto code_point_view : slide(view, 1)) {
+            auto code_point = *front(code_point_view);
+            // Check if we need to escape the code point
+            if (code_point == U'"' || code_point == U'\\' || code_point <= 0x1Fu) {
+                switch (code_point) {
+                    case U'"':
+                        DI_TRY(io::write_exactly(m_writer, "\\\""_sv));
+                        continue;
+                    case U'\\':
+                        DI_TRY(io::write_exactly(m_writer, "\\\\"_sv));
+                        continue;
+                    case U'\b':
+                        DI_TRY(io::write_exactly(m_writer, "\\b"_sv));
+                        continue;
+                    case U'\f':
+                        DI_TRY(io::write_exactly(m_writer, "\\f"_sv));
+                        continue;
+                    case U'\n':
+                        DI_TRY(io::write_exactly(m_writer, "\\n"_sv));
+                        continue;
+                    case U'\r':
+                        DI_TRY(io::write_exactly(m_writer, "\\r"_sv));
+                        continue;
+                    case U'\t':
+                        DI_TRY(io::write_exactly(m_writer, "\\t"_sv));
+                        continue;
+                    default:
+                        auto text = di::Array { c8('\\'), c8('u'), c8('0'), c8('0'), c8('0'), c8('0') };
+                        text[4] = to_hex_digit((code_point >> 4) & 0xF);
+                        text[5] = to_hex_digit(code_point & 0xF);
+                        DI_TRY(io::write_exactly(m_writer, StringView(encoding::assume_valid, text)));
+                        continue;
+                }
+            }
+            DI_TRY(io::write_exactly(m_writer, code_point_view));
+        }
         DI_TRY(io::write_exactly(m_writer, '"'));
         return {};
     }

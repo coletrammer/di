@@ -256,6 +256,13 @@ constexpr static void json_value() {
     ASSERT_EQ(r3, R"({"key":true})"_sv);
 }
 
+constexpr static void json_escaped_string() {
+    auto s = "a\b\f\n\r\t\v\x1f \"\\b"_sv;
+    auto r1 = *di::to_json_string(s);
+
+    ASSERT_EQ(r1, R"("a\b\f\n\r\t\u000B\u001F \"\\b")"_sv);
+}
+
 constexpr static void binary() {
     auto do_test = [](auto const& value, auto const& expected) {
         auto writer = di::VectorWriter<>();
@@ -283,5 +290,6 @@ TESTC(serialization, json_basic)
 TESTC(serialization, json_pretty)
 TESTC(serialization, json_reflect)
 TESTC(serialization, json_value)
+TESTC(serialization, json_escaped_string)
 TESTC(serialization, binary)
 }

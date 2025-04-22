@@ -60,6 +60,58 @@ constexpr static void json_value() {
 })"_sv);
 }
 
+constexpr static void json_escaped_string() {
+    struct Case {
+        di::StringView input;
+        di::StringView expected;
+    };
+
+    auto tests = di::Array {
+        Case(R"("\"\\\/\b\f\n\r\t\u0000\u12Ef")"_sv, u8"\"\\/\b\f\n\r\t\0\u12EF"_sv),
+        Case(R"("abc\ufFa9c")"_sv, u8"abc\uFFA9c"_sv),
+        Case(R"("a\uD834\uDD1Eb")"_sv, u8"a𝄞b"_sv),
+    };
+
+    for (auto [input, expected] : tests) {
+        auto result = di::from_json_string<di::String>(input);
+        ASSERT(result);
+        ASSERT_EQ(*result, expected);
+    }
+
+    struct NegativeCase {
+        di::StringView input;
+    };
+
+    auto negative_tests = di::Array {
+        // Non-sense one letter escape
+        NegativeCase(R"("\c")"_sv),
+        // Non-terminating esacpe
+        NegativeCase(R"("\c")"_sv),
+        NegativeCase(R"("\")"_sv),
+        NegativeCase(R"("\u")"_sv),
+        NegativeCase(R"("\ua")"_sv),
+        NegativeCase(R"("\uaa")"_sv),
+        NegativeCase(R"("\uaaa")"_sv),
+        // Invalid hex digits
+        NegativeCase(R"("\ua"aa")"_sv),
+        NegativeCase(R"("\ua,aa")"_sv),
+        NegativeCase(R"("\ua\aa")"_sv),
+        NegativeCase(R"("\uuaaa")"_sv),
+        // Unparied high surrogate
+        NegativeCase(R"("\uD801")"_sv),
+        NegativeCase(R"("\uD801\n")"_sv),
+        NegativeCase(R"("\uD801a")"_sv),
+        NegativeCase(R"("\uD801\uD801")"_sv),
+        // Unpaired low surrogate
+        NegativeCase(R"("\uDC01a")"_sv),
+    };
+
+    for (auto [input] : negative_tests) {
+        auto result = di::from_json_string<di::String>(input);
+        ASSERT(!result);
+    }
+}
+
 constexpr static void json_literal() {
     auto object = R"( {
     "hello" : 32 , "world" : [ "x" , null ]
@@ -233,6 +285,7 @@ constexpr static void binary() {
 }
 
 TESTC(deserialization, json_value)
+TEST(deserialization, json_escaped_string)
 TESTC_CLANG(deserialization, json_literal)
 TESTC_CLANG(deserialization, json_reflect)
 TESTC_CLANG(deserialization, binary)
