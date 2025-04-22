@@ -1,7 +1,7 @@
 ---
 WarningsAsErrors: "*"
 FormatStyle: none
-HeaderFilterRegex: .*
+HeaderFilterRegex: di/.*
 ExtraArgs: [-std=gnu++26, -fconstexpr-steps=10000000, -Wno-unknown-warning-option, -fsized-deallocation]
 Checks: >
   -*,

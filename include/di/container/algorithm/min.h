@@ -17,6 +17,8 @@ namespace detail {
         template<typename T, typename Proj = function::Identity,
                  concepts::IndirectStrictWeakOrder<meta::Projected<T const*, Proj>> Comp = function::Compare>
         constexpr auto operator()(T const& a, T const& b, Comp comp = {}, Proj proj = {}) const -> T const& {
+            // This is just how the standard library works.
+            // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter)
             return function::invoke(comp, function::invoke(proj, a), function::invoke(proj, b)) <= 0 ? a : b;
         }
 
