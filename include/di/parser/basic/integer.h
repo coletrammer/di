@@ -96,32 +96,27 @@ namespace detail {
             // If the string is exactly "0", then it is not a prefix. Just parse it as a decimal number, which will
             // result in the value of 0.
             if (++it == sent) {
-                return parse_digits(10);
-            }
-
-            if constexpr (mode == IntegerMode::CStandard) {
-                if (m_radix == 8) {
-                    // Since a 0 has been encountered, infer the radix to be 8.
-                    return parse_digits(8);
-                }
+                return parse_digits(m_radix == 0 ? 10 : m_radix);
             }
 
             ch = *it;
-            if (ch == U'x' || ch == U'X') {
+            if ((m_radix == 0 || m_radix == 16) && (ch == U'x' || ch == U'X')) {
                 context.advance(++it);
                 return parse_digits(16);
             }
-            if (ch == U'b' || ch == U'B') {
+            if ((m_radix == 0 || m_radix == 2) && (ch == U'b' || ch == U'B')) {
                 context.advance(++it);
                 return parse_digits(2);
             }
             if constexpr (mode == IntegerMode::Improved) {
-                if (ch == U'o' || ch == U'O') {
+                if ((m_radix == 0 || m_radix == 8) && (ch == U'o' || ch == U'O')) {
                     context.advance(++it);
                     return parse_digits(8);
                 }
+                // In improved mode, default to base 10 instead of base 8 when there is a leading 0.
                 return parse_digits(m_radix == 0 ? 10 : m_radix);
             }
+            // Fallback to octal
             return parse_digits(m_radix == 0 ? 8 : m_radix);
         }
 
