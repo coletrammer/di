@@ -6,7 +6,7 @@
 
 #define DI_ASSERT(...)                                                                \
     do {                                                                              \
-        if (!bool(__VA_ARGS__)) {                                                     \
+        if (!bool(__VA_ARGS__)) [[unlikely]] {                                        \
             ::di::assert::detail::assert_fail("" #__VA_ARGS__, nullptr, nullptr,      \
                                               ::di::util::SourceLocation::current()); \
         }                                                                             \

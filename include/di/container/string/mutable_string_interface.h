@@ -214,6 +214,22 @@ public:
     }
 
     template<concepts::ContainerOf<CodePoint> Con>
+    requires(di::SameAs<Enc, meta::Encoding<Con>> && concepts::detail::ConstantString<Con> &&
+             !encoding::NullTerminated<Enc>)
+    constexpr auto insert(Iterator it, Con&& container) {
+        return invoke_as_fallible([&] {
+                   return vector::insert_container(self(), string::string_to_vector_iterator(self(), it),
+                                                   container.span());
+               }) % [&](auto result) {
+            auto [first, last] = result;
+            return View {
+                encoding::make_iterator(self().encoding(), as_const(self()).span(), first - vector::begin(self())),
+                encoding::make_iterator(self().encoding(), as_const(self()).span(), last - vector::begin(self())),
+            };
+        } | try_infallible;
+    }
+
+    template<concepts::ContainerOf<CodePoint> Con>
     constexpr auto insert(Iterator it, Con&& container) {
         if constexpr (encoding::NullTerminated<Enc>) {
             return ((invoke_as_fallible([&] {

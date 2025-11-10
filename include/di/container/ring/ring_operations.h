@@ -54,7 +54,11 @@ constexpr auto end(Ring& ring) {
 }
 
 constexpr auto lookup(concepts::detail::ConstantRing auto& ring, usize index) -> decltype(auto) {
-    return ring::begin(ring)[index];
+    DI_ASSERT(index < ring::size(ring));
+    auto start = ring.head();
+    start += index;
+    start %= ring.capacity();
+    return ring.span().data()[start];
 }
 
 constexpr auto at(concepts::detail::ConstantRing auto& ring, usize index) {

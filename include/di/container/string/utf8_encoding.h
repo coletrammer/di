@@ -160,19 +160,19 @@ private:
         auto result = container::StaticVector<c8, meta::Constexpr<4ZU>> {};
         auto code_point_value = static_cast<u32>(code_point);
         if (code_point_value <= 0x7F) {
-            (void) result.resize(1);
+            result.assume_size(1);
             result[0] = code_point_value;
         } else if (code_point_value <= 0x7FF) {
-            (void) result.resize(2);
+            result.assume_size(2);
             result[0] = 0b11000000 | (code_point_value >> 6);
             result[1] = 0b10000000 | (code_point_value & 0x3F);
         } else if (code_point_value <= 0xFFFF) {
-            (void) result.resize(3);
+            result.assume_size(3);
             result[0] = 0b11100000 | (code_point_value >> 12);
             result[1] = 0b10000000 | ((code_point_value >> 6) & 0x3F);
             result[2] = 0b10000000 | (code_point_value & 0x3F);
         } else {
-            (void) result.resize(4);
+            result.assume_size(4);
             result[0] = 0b11110000 | (code_point_value >> 18);
             result[1] = 0b10000000 | ((code_point_value >> 12) & 0x3F);
             result[2] = 0b10000000 | ((code_point_value >> 6) & 0x3F);

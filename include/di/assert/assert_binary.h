@@ -46,7 +46,7 @@ void binary_assert_fail(char const* expression, T&& a, U&& b, util::SourceLocati
 
 template<typename F, typename T, typename U>
 constexpr void binary_assert(F op, char const* expression, T&& a, U&& b, util::SourceLocation loc) {
-    if (!op(a, b)) {
+    if (!op(a, b)) [[unlikely]] {
         if consteval {
             ::di::util::compile_time_fail<>();
         } else {

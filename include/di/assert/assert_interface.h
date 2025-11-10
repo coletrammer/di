@@ -28,6 +28,7 @@ namespace di::assert::detail {
 #include "di/util/source_location.h"
 
 namespace di::assert::detail {
-void assert_fail(char const* source_text, char const* lhs_message, char const* rhs_message, util::SourceLocation loc);
+[[noreturn]] void assert_fail(char const* source_text, char const* lhs_message, char const* rhs_message,
+                              util::SourceLocation loc);
 }
 #endif
