@@ -28,7 +28,7 @@ namespace detail {
 
         template<concepts::InputContainer Con, typename Proj = function::Identity,
                  concepts::IndirectUnaryPredicate<meta::Projected<meta::ContainerIterator<Con>, Proj>> Pred>
-        constexpr auto operator()(Con&& container, Pred pred, Proj proj = {}) const -> meta::BorrowedIterator<Con> {
+        constexpr auto operator()(Con&& container, Pred pred, Proj proj = {}) const -> meta::BorrowedView<Con> {
             return (*this)(container::begin(container), container::end(container), util::ref(pred), util::ref(proj));
         }
     };
