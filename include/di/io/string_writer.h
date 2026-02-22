@@ -13,6 +13,8 @@ template<concepts::detail::MutableString T = container::String>
 requires(concepts::SameAs<meta::Encoding<T>, container::string::Utf8Encoding>)
 class StringWriter {
 public:
+    constexpr explicit StringWriter(bool interactive_device = false) : m_interactive_device(interactive_device) {}
+
     constexpr auto write_some(vocab::Span<byte const> data)
         -> meta::LikeExpected<decltype(util::declval<T&>().push_back(c32(0))), usize> {
         for (auto byte : data) {
@@ -25,8 +27,11 @@ public:
 
     constexpr auto output() && -> T { return util::move(m_output); }
 
+    constexpr auto interactive_device() const -> bool { return m_interactive_device; }
+
 private:
     T m_output;
+    bool m_interactive_device { false };
 };
 }
 

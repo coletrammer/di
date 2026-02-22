@@ -48,8 +48,10 @@ protected:
 
     auto operator=(StatusCodeStorage const&) -> StatusCodeStorage& = default;
     constexpr auto operator=(StatusCodeStorage&& other) -> StatusCodeStorage& {
-        util::destroy_at(util::addressof(m_value));
-        util::construct_at(util::addressof(m_value), util::move(other).value());
+        if (this != &other) {
+            util::destroy_at(util::addressof(m_value));
+            util::construct_at(util::addressof(m_value), util::move(other).value());
+        }
         return *this;
     }
 

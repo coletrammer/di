@@ -1,9 +1,14 @@
 #pragma once
 
+#include "di/container/string/erased_string.h"
 #include "di/container/string/mutable_string_interface.h"
 #include "di/container/string/string_impl_forward_declaration.h"
 #include "di/container/string/string_view_impl.h"
 #include "di/container/vector/vector.h"
+#include "di/meta/core.h"
+#include "di/meta/operations.h"
+#include "di/util/exchange.h"
+#include "di/util/unsafe_forget.h"
 
 namespace di::container::string {
 template<concepts::Encoding Enc, concepts::detail::MutableVector Vec>
@@ -42,6 +47,29 @@ private:
             DI_ASSERT(encoding::validate(Enc(), util::as_const(storage).span()));
             return StringImpl { util::move(storage) };
         }
+    }
+
+    template<concepts::SameAs<types::Tag<into_erased_string>> T, concepts::SameAs<StringImpl> S>
+    requires(concepts::SameAs<Enc, Utf8Encoding>)
+    constexpr friend auto tag_invoke(T, S self) -> ErasedString {
+        auto result = ErasedString(
+            { self.data(), self.size_code_units() + 1 }, (void*) self.data(), (void*) self.m_vector.capacity(), nullptr,
+            [](ErasedString* dest, ErasedString* src, ErasedString::ThunkOp op) {
+                switch (op) {
+                    case ErasedString::ThunkOp::Move:
+                        src->m_state[0] = src->m_state[1] = nullptr;
+                        src->m_data = {};
+                        break;
+                    case ErasedString::ThunkOp::Destroy:
+                        if (dest->m_state[0] != nullptr) {
+                            auto alloc = typename Vec::Allocator {};
+                            di::deallocate_many<c8>(alloc, (c8*) dest->m_state[0], (size_t) dest->m_state[1]);
+                        }
+                        break;
+                }
+            });
+        unsafe_forget(di::move(self.m_vector));
+        return result;
     }
 
     [[no_unique_address]] Vec m_vector;

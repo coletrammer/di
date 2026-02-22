@@ -2,6 +2,7 @@
 #include "di/vocab/error/error.h"
 #include "di/vocab/error/meta/common_error.h"
 #include "di/vocab/error/prelude.h"
+#include "di/vocab/error/string_error.h"
 
 namespace vocab_error {
 constexpr static void basic() {
@@ -39,7 +40,17 @@ constexpr static void common_error() {
     static_assert(di::concepts::CommonErrorWith<X, Z>);
 }
 
+static void string_error() {
+    di::Error e = di::StringErrorCode(di::StringError("error"_s));
+    ASSERT(!e.success());
+    ASSERT_EQ(e.message(), u8"error"_sv);
+
+    auto f = di::format_error("x: {}"_sv, "bad"_sv);
+    ASSERT_EQ(f.message(), u8"x: bad"_sv);
+}
+
 TESTC(vocab_error, basic)
 TEST(vocab_error, erased)
 TESTC(vocab_error, common_error)
+TEST(vocab_error, string_error)
 }

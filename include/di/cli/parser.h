@@ -2,6 +2,7 @@
 
 #include "di/any/concepts/impl.h"
 #include "di/cli/argument.h"
+#include "di/cli/error.h"
 #include "di/cli/option.h"
 #include "di/container/algorithm/any_of.h"
 #include "di/container/algorithm/prelude.h"
@@ -10,6 +11,7 @@
 #include "di/container/string/string_view.h"
 #include "di/container/string/utf8_encoding.h"
 #include "di/container/vector/static_vector.h"
+#include "di/container/view/repeat.h"
 #include "di/format/style.h"
 #include "di/function/monad/monad_try.h"
 #include "di/function/not_fn.h"
@@ -18,6 +20,7 @@
 #include "di/io/string_writer.h"
 #include "di/io/writer_print.h"
 #include "di/io/writer_println.h"
+#include "di/math/numeric_limits.h"
 #include "di/meta/constexpr.h"
 #include "di/meta/language.h"
 #include "di/vocab/optional/lift_bool.h"
@@ -64,13 +67,13 @@ namespace detail {
         }
 
         // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-        constexpr auto parse(Span<TransparentStringView> args) -> Result<Base> {
+        constexpr auto parse(Span<TransparentStringView> args, bool use_colors = false) -> Result<Base> {
             using namespace di::string_literals;
 
-            if (args.empty()) {
-                return Unexpected(BasicError::InvalidArgument);
+            // The first argument is the name of the command, so its ignored for parsing.
+            if (!args.empty()) {
+                args = *args.subspan(1);
             }
-            args = *args.subspan(1);
 
             auto seen_arguments = Array<bool, max_options> {};
             seen_arguments.fill(false);
@@ -103,12 +106,12 @@ namespace detail {
                     for (usize char_index = 1; char_index < arg.size(); char_index++) {
                         auto index = lookup_short_name(arg[char_index]);
                         if (!index) {
-                            return Unexpected(BasicError::InvalidArgument);
+                            return Unexpected(Error(UnknownShortOption(arg[char_index]), use_colors));
                         }
 
                         // Parse boolean flag.
                         if (option_boolean(*index)) {
-                            DI_TRY(option_parse(*index, seen_arguments, &result, {}));
+                            DI_TRY(option_parse(*index, seen_arguments, &result, {}, false, use_colors));
                             if (option_always_succeeds(*index)) {
                                 return result;
                             }
@@ -118,7 +121,7 @@ namespace detail {
                         // Parse short option with directly specified value: '-iinput.txt'
                         auto value_view = arg.substr(arg.begin() + isize(char_index + 1));
                         if (!value_view.empty()) {
-                            DI_TRY(option_parse(*index, seen_arguments, &result, value_view));
+                            DI_TRY(option_parse(*index, seen_arguments, &result, value_view, false, use_colors));
                             if (option_always_succeeds(*index)) {
                                 return result;
                             }
@@ -127,11 +130,11 @@ namespace detail {
 
                         // Fail if the is no subsequent arguments left.
                         if (i + 1 >= args.size()) {
-                            return Unexpected(BasicError::InvalidArgument);
+                            return Unexpected(Error(ShortOptionMissingRequiredValue(arg[char_index]), use_colors));
                         }
 
                         // Use the next argument as the value.
-                        DI_TRY(option_parse(*index, seen_arguments, &result, args[arg_index + 1]));
+                        DI_TRY(option_parse(*index, seen_arguments, &result, args[arg_index + 1], false, use_colors));
                         if (option_always_succeeds(*index)) {
                             return result;
                         }
@@ -153,14 +156,11 @@ namespace detail {
 
                 auto index = lookup_long_name(name);
                 if (!index) {
-                    return Unexpected(BasicError::InvalidArgument);
+                    return Unexpected(Error(UnknownLongOption(name, closest_option_match(name)), use_colors));
                 }
 
                 if (option_boolean(*index)) {
-                    if (equal) {
-                        return Unexpected(BasicError::InvalidArgument);
-                    }
-                    DI_TRY(option_parse(*index, seen_arguments, &result, {}));
+                    DI_TRY(option_parse(*index, seen_arguments, &result, {}, true, use_colors));
                     if (option_always_succeeds(*index)) {
                         return result;
                     }
@@ -170,7 +170,7 @@ namespace detail {
 
                 auto value = ""_tsv;
                 if (!equal && i + 1 >= args.size()) {
-                    return Unexpected(BasicError::InvalidArgument);
+                    return Unexpected(Error(LongOptionMissingRequiredValue(name), use_colors));
                 }
                 if (!equal) {
                     value = args[arg_index + 1];
@@ -182,7 +182,7 @@ namespace detail {
                     send_arg_to_back(arg_index);
                 }
 
-                DI_TRY(option_parse(*index, seen_arguments, &result, value));
+                DI_TRY(option_parse(*index, seen_arguments, &result, value, true, use_colors));
                 if (option_always_succeeds(*index)) {
                     return result;
                 }
@@ -191,22 +191,36 @@ namespace detail {
             // Validate all required arguments were processed.
             for (usize i = 0; i < m_options.size(); i++) {
                 if (!seen_arguments[i] && option_required(i)) {
-                    return Unexpected(BasicError::InvalidArgument);
+                    return Unexpected(
+                        Error(MissingRequiredOption(m_options[i].short_name(), m_options[i].long_name()), use_colors));
                 }
             }
 
             // All the positional arguments are now at the front of the array.
             auto positional_arguments = *args.subspan(0, args.size() - count_option_processed);
             if (positional_arguments.size() < minimum_required_argument_count()) {
-                return Unexpected(BasicError::InvalidArgument);
+                auto available_arguments = positional_arguments.size();
+                for (auto& argument : m_arguments) {
+                    if (argument.required_argument_count() > available_arguments) {
+                        return Unexpected(Error(MissingRequiredArgument(argument.argument_name(), available_arguments,
+                                                                        argument.required_argument_count()),
+                                                use_colors));
+                    }
+                    available_arguments -= argument.required_argument_count();
+                }
             }
 
             auto argument_index = usize(0);
-            for (auto i = usize(0); i < positional_arguments.size(); argument_index++) {
+            auto i = usize(0);
+            for (; i < positional_arguments.size(); argument_index++) {
                 auto count_to_consume = !argument_variadic(i) ? 1 : positional_arguments.size() - argument_count() + 1;
                 auto input = *positional_arguments.subspan(i, count_to_consume);
-                DI_TRY(argument_parse(argument_index, &result, input));
+                DI_TRY(argument_parse(argument_index, &result, input, use_colors));
                 i += count_to_consume;
+            }
+            if (i < positional_arguments.size()) {
+                return Unexpected(
+                    Error(ExtraArguments(positional_arguments.subspan(i).value() | di::to<Vector>()), use_colors));
             }
             return result;
         }
@@ -282,22 +296,84 @@ namespace detail {
         }
 
     private:
+        constexpr auto closest_option_match(di::TransparentStringView name) -> di::Optional<di::TransparentStringView> {
+            auto result = ""_tsv;
+            auto score = NumericLimits<i32>::max;
+            for (auto const& option : m_options) {
+                auto option_name = option.long_name();
+                if (!option_name || name.empty() || option_name.empty()) {
+                    continue;
+                }
+
+                auto dp = di::Vector<di::Vector<i32>> {};
+                for (auto _ : range(name.size() + 1)) {
+                    dp.push_back(repeat(NumericLimits<i32>::max, option_name.value().size() + 1) | di::to<Vector>());
+                }
+
+                for (auto x : range(dp.size())) {
+                    dp[x][0] = i32(x);
+                }
+                for (auto x : range(dp[0].size())) {
+                    dp[0][x] = i32(x);
+                }
+
+                for (auto i : range(1zu, dp.size())) {
+                    for (auto j : range(1zu, dp[i].size())) {
+                        dp[i][j] = di::min({
+                            1 + dp[i - 1][j],
+                            1 + dp[i][j - 1],
+                            i32(name[i] != option_name.value()[j]) + dp[i - 1][j - 1],
+                        });
+                    }
+                }
+
+                auto new_score = dp.back().value().back().value();
+                if (new_score < score) {
+                    result = option_name.value();
+                    score = new_score;
+                }
+            }
+            if (score <= i32(name.size()) / 2 + 1) {
+                return result;
+            }
+            return {};
+        }
+
         constexpr auto option_required(usize index) const -> bool { return m_options[index].required(); }
         constexpr auto option_boolean(usize index) const -> bool { return m_options[index].boolean(); }
         constexpr auto option_always_succeeds(usize index) const -> bool { return m_options[index].always_succeeds(); }
 
         constexpr auto option_parse(usize index, Span<bool> seen_arguments, Base* output,
-                                    Optional<TransparentStringView> input) const -> Result<void> {
-            DI_TRY(m_options[index].parse(output, input));
+                                    Optional<TransparentStringView> input, bool is_long, bool use_colors) const
+            -> Result<void> {
+            DI_TRY(m_options[index].parse(output, input).transform_error([&](auto error) -> di::Error {
+                return Error(
+                    ParseOptionError {
+                        .short_name = !is_long ? m_options[index].short_name().value_or('\0') : '\0',
+                        .long_name = is_long ? m_options[index].long_name().value_or(""_tsv) : ""_tsv,
+                        .bad_value = input.value_or(""_tsv),
+                        .is_long = is_long,
+                        .parse_error = di::move(error),
+                    },
+                    use_colors);
+            }));
             seen_arguments[index] = true;
             return {};
         }
 
         constexpr auto argument_variadic(usize index) const -> bool { return m_arguments[index].variadic(); }
 
-        constexpr auto argument_parse(usize index, Base* output, Span<TransparentStringView> input) const
-            -> Result<void> {
-            return m_arguments[index].parse(output, input);
+        constexpr auto argument_parse(usize index, Base* output, Span<TransparentStringView> input,
+                                      bool use_colors) const -> Result<void> {
+            return m_arguments[index].parse(output, input).transform_error([&](auto error) -> di::Error {
+                return Error(
+                    ParseArgumentError {
+                        .argument_name = m_arguments[index].argument_name(),
+                        .bad_values = input | di::to<Vector>(),
+                        .parse_error = di::move(error),
+                    },
+                    use_colors);
+            });
         }
 
         constexpr auto minimum_required_argument_count() const -> usize {

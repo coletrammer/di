@@ -118,6 +118,15 @@ constexpr static void erased() {
     ASSERT_EQ(s, u8"abc"_sv);
 }
 
+static void erased_string() {
+    di::ErasedString t = u8"def"_s;
+    ASSERT_EQ(t, u8"def"_sv);
+
+    auto q = di::move(t);
+    ASSERT_EQ(t, u8""_sv);
+    ASSERT_EQ(q, u8"def"_sv);
+}
+
 constexpr static void do_utf8_test(di::StringView view, di::Vector<char32_t> const& desired) {
     // Check the iteration produces the same results forwards and backwards.
     auto forwards = view | di::to<di::Vector>();
@@ -222,6 +231,7 @@ TESTC(container_string, push_back)
 TESTC(container_string, mutation)
 TESTC(container_string, to)
 TESTC(container_string, erased)
+TEST(container_string, erased_string)
 TESTC(container_string, utf8)
 TESTC(container_string, readonly_api)
 TESTC(container_string, null_terminated)

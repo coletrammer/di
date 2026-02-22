@@ -19,6 +19,7 @@
 #include "di/meta/vocab.h"
 #include "di/types/size_t.h"
 #include "di/util/to_address.h"
+#include "di/util/to_owned.h"
 #include "di/vocab/optional/prelude.h"
 #include "di/vocab/span/span_forward_declaration.h"
 
