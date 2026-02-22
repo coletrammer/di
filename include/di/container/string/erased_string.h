@@ -25,18 +25,14 @@ public:
     constexpr auto encoding() const { return Encoding {}; }
     constexpr auto span() const { return m_data; }
 
-protected:
     enum class ThunkOp { Move, Destroy };
 
-    using ThunkFunction = void (*)(ErasedString* dest, ErasedString const* src, ThunkOp op);
+    using ThunkFunction = void (*)(ErasedString* dest, ErasedString* src, ThunkOp op);
 
     Span<c8 const> m_data;
     void* m_state[3] {};
     ThunkFunction const m_thunk { nullptr };
 
-    constexpr explicit ErasedString(ThunkFunction thunk) : m_thunk(thunk) {}
-
-public:
     constexpr explicit ErasedString(Span<c8 const> data = {}, void* state0 = nullptr, void* state1 = nullptr,
                                     void* state2 = nullptr, ThunkFunction thunk = nullptr)
         : m_data({ data.data(), data.size() - 1 }), m_state(state0, state1, state2), m_thunk(thunk) {}

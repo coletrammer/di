@@ -140,6 +140,8 @@ private:
         return a == nullptr ? di::strong_ordering::equal : di::strong_ordering::greater;
     }
 
+    constexpr friend auto tag_invoke(Tag<concepts::trivially_relocatable>, InPlaceType<Box>) -> bool { return true; }
+
     T* m_pointer { nullptr };
     [[no_unique_address]] Deleter m_deleter {};
 };

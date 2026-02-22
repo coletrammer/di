@@ -21,8 +21,11 @@ private:
 
         auto output = static_cast<Base*>(output_untyped);
         if constexpr (concepts::SameAs<Value, bool>) {
-            DI_ASSERT(!input);
-            (*output).*member = true;
+            if (!input) {
+                (*output).*member = true;
+                return {};
+            }
+            (*output).*member = DI_TRY(parser::parse<Value>(*input));
             return {};
         } else {
             DI_ASSERT(input);

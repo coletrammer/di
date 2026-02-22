@@ -45,6 +45,8 @@ public:
 
     constexpr auto generic_code() const -> GenericCode;
 
+    constexpr auto operator==(StatusCode const& other) const -> bool { return strictly_equivalent(other); }
+
 protected:
     constexpr explicit StatusCode(StatusCodeDomain const* domain) : m_domain(domain) {}
 

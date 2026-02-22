@@ -23,7 +23,7 @@ public:
 
     template<typename Domain>
     requires(concepts::StatusCodeErasableInto<Domain, Erased<T>> &&
-             !concepts::ErasedStatusCode<StatusCode<meta::Decay<Domain>>>)
+             !concepts::ErasedStatusCode<StatusCode<meta::Decay<Domain>>> && concepts::Trivial<typename Domain::Value>)
     constexpr StatusCode(StatusCode<Domain> const& other)
         : Base(in_place, other.m_domain, detail::erasure_cast<Value>(other.value())) {}
 
@@ -31,7 +31,7 @@ public:
     requires(concepts::StatusCodeErasableInto<Domain, Erased<T>> &&
              !concepts::ErasedStatusCode<StatusCode<meta::Decay<Domain>>>)
     constexpr StatusCode(StatusCode<Domain>&& other)
-        : Base(in_place, other.m_domain, detail::erasure_cast<Value>(other.value())) {}
+        : Base(in_place, other.m_domain, detail::erasure_cast<Value>(di::move(other.value()))) {}
 
     template<typename U, typename... Args>
     requires(!concepts::DecaySameAs<U, StatusCode> && !concepts::DecaySameAs<U, Value> &&

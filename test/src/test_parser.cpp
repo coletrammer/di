@@ -55,6 +55,12 @@ constexpr static void integer() {
     ASSERT(!di::parse<u8>(u8"256"_sv));
 }
 
+constexpr static void boolean() {
+    ASSERT_EQ(di::parse<bool>("true"_sv), true);
+    ASSERT_EQ(di::parse<bool>("false"_sv), false);
+    ASSERT(!di::parse<bool>("asdf"_sv));
+}
+
 constexpr static void integral_constant() {
     ASSERT_EQ(1_zic, 1U);
     ASSERT_EQ(4161_zic, 4161U);
@@ -71,6 +77,7 @@ constexpr static void alternation() {
 TESTC(parser, set)
 TESTC(parser, code_point)
 TESTC(parser, integer)
+TESTC(parser, boolean)
 TESTC(parser, integral_constant)
 TESTC(parser, alternation)
 }

@@ -46,7 +46,7 @@ namespace detail {
     struct TriviallyRelocatableFunction {
         template<typename T>
         constexpr auto operator()(InPlaceType<T>) const -> bool {
-            if constexpr (TagInvocableTo<TriviallyRelocatableFunction, InPlaceType<T>>) {
+            if constexpr (TagInvocableTo<TriviallyRelocatableFunction, bool, InPlaceType<T>>) {
                 return function::tag_invoke(*this, in_place_type<T>);
             } else {
                 return concepts::TriviallyCopyable<T>;

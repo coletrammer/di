@@ -26,6 +26,7 @@ class Vector : public MutableVectorInterface<Vector<T, Alloc>, T> {
 public:
     using Value = T;
     using ConstValue = T const;
+    using Allocator = Alloc;
 
     constexpr Vector() = default;
     constexpr Vector(Vector const&) = delete;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "di/parser/basic/bool.h"
 #include "di/parser/basic/code_point_parser.h"
 #include "di/parser/basic/eof_parser.h"
 #include "di/parser/basic/integer.h"
