@@ -41,7 +41,7 @@ private:
     template<concepts::Encoding Enc>
     constexpr friend auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<BigEndian>,
                                      FormatParseContext<Enc>& parse_context, bool debug) {
-        return format::formatter<T, Enc>(parse_context, debug);
+        return fmt::formatter<T, Enc>(parse_context, debug);
     }
 
     T m_value { 0 };

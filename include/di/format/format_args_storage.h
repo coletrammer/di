@@ -3,7 +3,7 @@
 #include "di/format/format_args.h"
 #include "di/vocab/array/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<size_t count, concepts::FormatArg Arg>
 class FormatArgsStorage : public FormatArgs<Arg> {
 public:

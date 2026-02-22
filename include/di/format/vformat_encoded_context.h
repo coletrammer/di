@@ -11,7 +11,7 @@
 #include "di/function/monad/monad_try.h"
 #include "di/vocab/optional/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 namespace detail {
     template<concepts::Encoding Enc, typename Var>
     constexpr auto do_format(Var&& variant, FormatParseContext<Enc>& parse_context,
@@ -21,7 +21,7 @@ namespace detail {
                 if constexpr (concepts::InstanceOf<meta::RemoveCVRef<T>, ErasedArg>) {
                     return value.do_format(parse_context, context, debug);
                 } else {
-                    auto formatter = DI_TRY(format::formatter<meta::RemoveCVRef<T>, Enc>(parse_context, debug));
+                    auto formatter = DI_TRY(fmt::formatter<meta::RemoveCVRef<T>, Enc>(parse_context, debug));
                     return formatter(context, value);
                 }
             },
@@ -29,7 +29,7 @@ namespace detail {
     }
 
     template<concepts::Encoding Enc>
-    struct VPresentEncodedContextFunction {
+    struct VFormatEncodedContextFunction {
         using View = container::string::StringViewImpl<Enc>;
 
         template<concepts::FormatArg Arg>
@@ -58,5 +58,5 @@ namespace detail {
 }
 
 template<concepts::Encoding Enc>
-constexpr inline auto vpresent_encoded_context = detail::VPresentEncodedContextFunction<Enc> {};
+constexpr inline auto vformat_encoded_context = detail::VFormatEncodedContextFunction<Enc> {};
 }

@@ -3,7 +3,7 @@
 #include "di/format/concepts/format_arg.h"
 #include "di/vocab/span/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::FormatArg Arg>
 class FormatArgs {
 public:

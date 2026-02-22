@@ -6,24 +6,24 @@
 #include "di/format/concepts/formattable.h"
 #include "di/format/format_string_impl.h"
 #include "di/format/make_format_args.h"
-#include "di/format/vpresent_encoded_context.h"
+#include "di/format/vformat_encoded_context.h"
 
-namespace di::format {
+namespace di::fmt {
 namespace detail {
     template<concepts::Encoding Enc>
-    struct PresentEncodedContextFunction {
+    struct FormatEncodedContextFunction {
         template<concepts::Formattable... Args>
-        constexpr auto operator()(format::FormatStringImpl<Enc, Args...> format, concepts::FormatContext auto& context,
+        constexpr auto operator()(fmt::FormatStringImpl<Enc, Args...> format, concepts::FormatContext auto& context,
                                   Args&&... args) const {
-            return vpresent_encoded_context<Enc>(format, format::make_format_args<decltype(context)>(args...), context);
+            return vformat_encoded_context<Enc>(format, fmt::make_format_args<decltype(context)>(args...), context);
         }
     };
 }
 
 template<concepts::Encoding Enc>
-constexpr inline auto present_encoded_context = detail::PresentEncodedContextFunction<Enc> {};
+constexpr inline auto format_encoded_context = detail::FormatEncodedContextFunction<Enc> {};
 }
 
 namespace di {
-using format::present_encoded_context;
+using fmt::format_encoded_context;
 }

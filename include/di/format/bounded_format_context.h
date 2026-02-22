@@ -4,7 +4,7 @@
 #include "di/container/vector/prelude.h"
 #include "di/util/move.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Encoding Enc, typename SizeConstant>
 class BoundedFormatContext {
 private:

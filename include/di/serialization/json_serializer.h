@@ -219,11 +219,11 @@ public:
         DI_TRY(serialize_comma());
 
         using Enc = container::string::Utf8Encoding;
-        using TargetContext = format::BoundedFormatContext<Enc, meta::Constexpr<256ZU>>;
+        using TargetContext = fmt::BoundedFormatContext<Enc, meta::Constexpr<256ZU>>;
         auto context = TargetContext {};
-        DI_TRY(di::format::vpresent_encoded_context<Enc>(
+        DI_TRY(di::fmt::vformat_encoded_context<Enc>(
             di::container::string::StringViewImpl<Enc>(encoding::assume_valid, u8"{}", 2),
-            di::format::make_format_args<TargetContext>(number), context));
+            di::fmt::make_format_args<TargetContext>(number), context));
 
         DI_TRY(io::write_exactly(m_writer, context.output()));
         return {};

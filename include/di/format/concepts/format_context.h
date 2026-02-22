@@ -12,7 +12,7 @@ concept FormatContext = requires { typename meta::Encoding<T>; } && requires(T& 
 };
 }
 
-namespace di::format {
+namespace di::fmt {
 struct ContextPlaceholder {
     using Encoding = container::string::Utf8Encoding;
     void output(char);

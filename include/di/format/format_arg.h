@@ -7,7 +7,7 @@
 #include "di/util/voidify.h"
 #include "di/vocab/variant/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Formattable... Types>
 using ConstexprFormatArg = Variant<Types&..., Void>;
 
@@ -19,7 +19,7 @@ private:
     template<concepts::Formattable T>
     constexpr static auto erased_format(void* value, FormatParseContext<Encoding>& parse_context, Context& context,
                                         bool debug) -> di::Result<void> {
-        auto formatter = DI_TRY(format::formatter<T, Encoding>(parse_context, debug));
+        auto formatter = DI_TRY(fmt::formatter<T, Encoding>(parse_context, debug));
         return formatter(context, *static_cast<meta::RemoveCVRef<T>*>(value));
     }
 

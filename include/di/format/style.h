@@ -1,9 +1,9 @@
 #pragma once
 
 #include "di/format/bounded_format_context.h"
-#include "di/format/present_encoded_context.h"
+#include "di/format/format_encoded_context.h"
 
-namespace di::format::style {
+namespace di::fmt::style {
 /// @brief Represent a ANSI terminal color.
 ///
 /// These correspond to the CSI SGR parameters, as documented here:
@@ -60,15 +60,15 @@ public:
     template<concepts::Encoding Enc>
     constexpr auto render_to_ansi_escapes() const {
         // Use a bounded context to avoid allocating a string.
-        using TargetContext = format::BoundedFormatContext<Enc, meta::Constexpr<32ZU>>;
+        using TargetContext = fmt::BoundedFormatContext<Enc, meta::Constexpr<32ZU>>;
 
         auto context = TargetContext {};
-        (void) present_encoded_context<Enc>("\033[{};{};{}m"_sv, context, util::to_underlying(effect()),
-                                            util::to_underlying(foreground()) + 30,
-                                            util::to_underlying(background()) + 40);
+        (void) format_encoded_context<Enc>("\033[{};{};{}m"_sv, context, util::to_underlying(effect()),
+                                           util::to_underlying(foreground()) + 30,
+                                           util::to_underlying(background()) + 40);
 
         auto context_for_reset = TargetContext {};
-        (void) present_encoded_context<Enc>("\033[0m"_sv, context_for_reset);
+        (void) format_encoded_context<Enc>("\033[0m"_sv, context_for_reset);
 
         return Tuple(util::move(context).output(), util::move(context_for_reset).output());
     }
@@ -134,9 +134,9 @@ public:
 
 private:
     template<concepts::Encoding Enc>
-    constexpr friend auto tag_invoke(types::Tag<format::formatter_in_place>, InPlaceType<Styled>,
+    constexpr friend auto tag_invoke(types::Tag<fmt::formatter_in_place>, InPlaceType<Styled>,
                                      FormatParseContext<Enc>& parse_context, bool debug) {
-        return format::formatter<T, Enc>(parse_context, debug) % [](concepts::CopyConstructible auto formatter) {
+        return fmt::formatter<T, Enc>(parse_context, debug) % [](concepts::CopyConstructible auto formatter) {
             return [=]<concepts::FormatContext Context>(Context& context, Styled const& value) {
                 if constexpr (requires { typename Context::SupportsStyle; }) {
                     return context.with_style(value.m_style, [&] {
@@ -157,7 +157,7 @@ template<typename T>
 Styled(T&&, Style) -> Styled<T&&>;
 }
 
-namespace di::format {
+namespace di::fmt {
 using style::BackgroundColor;
 using style::Color;
 using style::Effect;
@@ -166,9 +166,9 @@ using style::Styled;
 }
 
 namespace di {
-using format::Styled;
+using fmt::Styled;
 
-using FormatColor = format::Color;
-using FormatBackgroundColor = format::BackgroundColor;
-using FormatEffect = format::Effect;
+using FormatColor = fmt::Color;
+using FormatBackgroundColor = fmt::BackgroundColor;
+using FormatEffect = fmt::Effect;
 }

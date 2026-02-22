@@ -30,9 +30,9 @@ struct Null {
     explicit Null() = default;
 
     template<concepts::Encoding Enc>
-    constexpr friend auto tag_invoke(types::Tag<format::formatter_in_place>, InPlaceType<Null>,
-                                     format::FormatParseContext<Enc>& parse_context, bool debug) {
-        return format::formatter<container::StringView>(parse_context, debug) %
+    constexpr friend auto tag_invoke(types::Tag<fmt::formatter_in_place>, InPlaceType<Null>,
+                                     fmt::FormatParseContext<Enc>& parse_context, bool debug) {
+        return fmt::formatter<container::StringView>(parse_context, debug) %
                [](concepts::CopyConstructible auto formatter) {
                    return [=](concepts::FormatContext auto& context, Null) {
                        return formatter(context, "null"_sv);
@@ -377,9 +377,9 @@ private:
 
     template<concepts::Encoding Enc, concepts::SameAs<InPlaceType<Value>> X = InPlaceType<Value>,
              concepts::SameAs<bool> B = bool,
-             concepts::SameAs<types::Tag<format::formatter_in_place>> Tag = types::Tag<format::formatter_in_place>>
-    constexpr friend auto tag_invoke(Tag, X, format::FormatParseContext<Enc>& parse_context, B debug) {
-        return format::formatter<container::StringView>(parse_context, debug) %
+             concepts::SameAs<types::Tag<fmt::formatter_in_place>> Tag = types::Tag<fmt::formatter_in_place>>
+    constexpr friend auto tag_invoke(Tag, X, fmt::FormatParseContext<Enc>& parse_context, B debug) {
+        return fmt::formatter<container::StringView>(parse_context, debug) %
                [](concepts::CopyConstructible auto formatter) {
                    return [=](concepts::FormatContext auto& context, Value const& value) {
                        auto string = serialization::to_json_string(value, JsonSerializerConfig().pretty());

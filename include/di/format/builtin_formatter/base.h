@@ -5,14 +5,14 @@
 #include "di/container/view/join.h"
 #include "di/container/view/transform.h"
 #include "di/format/make_format_args.h"
-#include "di/format/vpresent_encoded_context.h"
+#include "di/format/vformat_encoded_context.h"
 #include "di/function/value.h"
 #include "di/math/abs.h"
 #include "di/math/abs_unsigned.h"
 #include "di/math/divide_round_up.h"
 #include "di/parser/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 namespace detail {
     struct FillAndAlign {
         enum class Align { Left, Center, Right };
@@ -290,10 +290,10 @@ namespace detail {
     };
 
     template<concepts::Encoding Enc>
-    constexpr auto present_string_view_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
-                                          Optional<size_t> width, Optional<size_t> precision, bool debug,
-                                          container::string::StringViewImpl<Enc> view_in,
-                                          char32_t delimit_code_point = U'"') -> Result<void> {
+    constexpr auto format_string_view_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
+                                         Optional<size_t> width, Optional<size_t> precision, bool debug,
+                                         container::string::StringViewImpl<Enc> view_in,
+                                         char32_t delimit_code_point = U'"') -> Result<void> {
         using CodePoint = meta::EncodingCodePoint<Enc>;
 
         auto delimit = lift_bool(debug) % function::value(delimit_code_point);
@@ -422,22 +422,22 @@ namespace detail {
     }
 
     template<concepts::Encoding Enc>
-    constexpr auto present_character_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
-                                        Optional<size_t> width, bool debug, c32 value) -> Result<void> {
+    constexpr auto format_character_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
+                                       Optional<size_t> width, bool debug, c32 value) -> Result<void> {
         auto encoding = context.encoding();
         auto as_code_units = container::string::encoding::convert_to_code_units(encoding, value);
         auto [first, last] =
             container::string::encoding::code_point_view(encoding, { as_code_units.data(), as_code_units.size() });
         auto as_string_view = container::string::StringViewImpl<Enc> { first, last, encoding };
-        return present_string_view_to(context, fill_and_align, width, nullopt, debug, as_string_view, U'\'');
+        return format_string_view_to(context, fill_and_align, width, nullopt, debug, as_string_view, U'\'');
     }
 
     template<concepts::Encoding Enc, concepts::Integral T>
-    constexpr auto present_integer_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
-                                      Sign sign, HashTag hash_tag, Zero zero, Optional<size_t> width, IntegerType type,
-                                      bool debug, T value) -> Result<void> {
+    constexpr auto format_integer_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
+                                     Sign sign, HashTag hash_tag, Zero zero, Optional<size_t> width, IntegerType type,
+                                     bool debug, T value) -> Result<void> {
         if (type == IntegerType::Character) {
-            return present_character_to<Enc>(context, fill_and_align, width, debug, static_cast<c32>(value));
+            return format_character_to<Enc>(context, fill_and_align, width, debug, static_cast<c32>(value));
         }
 
         using CodePoint = meta::EncodingCodePoint<Enc>;
@@ -560,14 +560,14 @@ namespace detail {
         }
 
         auto backup_fill_and_align = FillAndAlign { zero_pad ? U'0' : U' ', FillAndAlign::Align::Right };
-        return present_string_view_to<Enc>(context, fill_and_align.value_or(backup_fill_and_align), width, nullopt,
-                                           false, buffer);
+        return format_string_view_to<Enc>(context, fill_and_align.value_or(backup_fill_and_align), width, nullopt,
+                                          false, buffer);
     }
 
     template<concepts::Encoding Enc>
-    constexpr auto present_formatted_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
-                                        Optional<size_t> width, Optional<size_t> precision,
-                                        container::string::StringViewImpl<Enc> format_string, auto&&... args)
+    constexpr auto format_formatted_to(concepts::FormatContext auto& context, Optional<FillAndAlign> fill_and_align,
+                                       Optional<size_t> width, Optional<size_t> precision,
+                                       container::string::StringViewImpl<Enc> format_string, auto&&... args)
         -> Result<void> {
         // If there is no width, fill_and_align is ignored, so no temporary buffer is needed.
 
@@ -589,8 +589,7 @@ namespace detail {
         DI_ASSERT(!precision);
         (void) fill_and_align;
 
-        return vpresent_encoded_context<Enc>(context, format_string,
-                                             format::make_format_args<decltype(context)>(args...));
+        return vformat_encoded_context<Enc>(context, format_string, fmt::make_format_args<decltype(context)>(args...));
     }
 }
 }

@@ -180,19 +180,19 @@ protected:
                                             di::Styled(error.argument_name, argument_effect), error.parse_error);
                       },
                       [&](ParseOptionError const& error) {
-                          auto option_name = error.short_name != 0 ? *di::present("-{}"_sv, error.short_name)
-                                                                   : *di::present("--{}"_sv, error.long_name);
+                          auto option_name = error.short_name != 0 ? di::format("-{}"_sv, error.short_name)
+                                                                   : di::format("--{}"_sv, error.long_name);
                           writer_print<Enc>(writer, "Failed to parse '{}' as value for option '{}': {}"_sv,
                                             di::Styled(error.bad_value, value_effect),
                                             di::Styled(option_name, option_effect), error.parse_error);
                       },
                       [&](ShortOptionMissingRequiredValue const& error) {
-                          auto option_name = *di::present("-{}"_sv, error.short_name);
+                          auto option_name = di::format("-{}"_sv, error.short_name);
                           writer_print<Enc>(writer, "Missing required value for option '{}'"_sv,
                                             di::Styled(option_name, option_effect));
                       },
                       [&](LongOptionMissingRequiredValue const& error) {
-                          auto option_name = *di::present("--{}"_sv, error.long_name);
+                          auto option_name = di::format("--{}"_sv, error.long_name);
                           writer_print<Enc>(writer, "Missing required value for option '{}'"_sv,
                                             di::Styled(option_name, option_effect));
                       },
@@ -218,18 +218,18 @@ protected:
                                             di::Styled(error.argument_name, argument_effect));
                       },
                       [&](UnknownShortOption const& error) {
-                          auto option_name = *di::present("-{}"_sv, error.bad_character);
+                          auto option_name = di::format("-{}"_sv, error.bad_character);
                           writer_print<Enc>(writer, "Option '{}' is not a valid option"_sv,
                                             di::Styled(option_name, option_effect));
                       },
                       [&](UnknownLongOption const& error) {
-                          auto option_name = *di::present("--{}"_sv, error.bad_option);
+                          auto option_name = di::format("--{}"_sv, error.bad_option);
                           writer_print<Enc>(writer, "Option '{}' is not a valid option"_sv,
                                             di::Styled(option_name, option_effect));
                           if (error.closest_match) {
                               writer_print<Enc>(
                                   writer, ". Did you mean '{}'?"_sv,
-                                  di::Styled(*di::present("--{}"_sv, error.closest_match.value()), option_effect));
+                                  di::Styled(di::format("--{}"_sv, error.closest_match.value()), option_effect));
                           }
                       },
                       [&](ExtraArguments const& error) {

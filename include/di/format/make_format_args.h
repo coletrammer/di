@@ -4,7 +4,7 @@
 #include "di/format/format_args_storage.h"
 #include "di/vocab/tuple/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::FormatContext Context, concepts::Formattable... Types>
 constexpr auto make_format_args(Types&&... values) {
     using Arg = FormatArg<Context>;

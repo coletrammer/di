@@ -6,11 +6,11 @@
 #include "di/container/string/string.h"
 #include "di/container/string/string_impl.h"
 #include "di/format/concepts/formattable.h"
+#include "di/format/format.h"
 #include "di/format/format_string_impl.h"
 #include "di/format/make_format_args.h"
 #include "di/format/prelude.h"
-#include "di/format/present.h"
-#include "di/format/vpresent_encoded.h"
+#include "di/format/vformat_encoded.h"
 #include "di/platform/prelude.h"
 #include "di/types/prelude.h"
 #include "di/vocab/error/error.h"
@@ -137,10 +137,10 @@ namespace detail {
         using Enc = di::String::Encoding;
 
         template<concepts::Formattable... Args>
-        constexpr static auto operator()(format::FormatStringImpl<Enc, Args...> format, Args&&... args)
+        constexpr static auto operator()(fmt::FormatStringImpl<Enc, Args...> format, Args&&... args)
             -> StringErrorCode {
             return StringError(
-                *format::vpresent_encoded<Enc>(format, format::make_format_args<format::FormatContext<Enc>>(args...)));
+                fmt::vformat_encoded<Enc>(format, fmt::make_format_args<fmt::FormatContext<Enc>>(args...)));
         }
     };
 }
