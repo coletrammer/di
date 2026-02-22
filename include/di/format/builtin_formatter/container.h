@@ -7,10 +7,10 @@
 #include "di/format/concepts/formattable.h"
 #include "di/format/formatter.h"
 #include "di/format/make_format_args.h"
-#include "di/format/vpresent_encoded_context.h"
+#include "di/format/vformat_encoded_context.h"
 #include "di/meta/util.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::InputContainer Con, concepts::Encoding Enc>
 requires(!concepts::detail::ConstantString<Con> && concepts::Formattable<meta::ContainerReference<Con>>)
 constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Con>, FormatParseContext<Enc>&) {
@@ -25,8 +25,8 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Con>, Form
                 context.output(' ');
             }
             first = false;
-            DI_TRY(vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-                u8"{}"_sv, format::make_format_args<decltype(context)>(value), context, true));
+            DI_TRY(vformat_encoded_context<meta::Encoding<decltype(context)>>(
+                u8"{}"_sv, fmt::make_format_args<decltype(context)>(value), context, true));
         }
         context.output(' ');
         context.output('}');

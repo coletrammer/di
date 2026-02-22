@@ -3,7 +3,7 @@
 #include "di/container/string/string_impl.h"
 #include "di/util/move.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Encoding Enc>
 class FormatContext {
 private:

@@ -9,7 +9,7 @@
 #include "di/vocab/error/prelude.h"
 #include "di/vocab/variant/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Encoding Enc>
 class FormatParseContext {
 private:
@@ -226,5 +226,5 @@ private:
 }
 
 namespace di {
-using format::FormatParseContext;
+using fmt::FormatParseContext;
 }

@@ -3,7 +3,7 @@
 #include "di/format/formatter.h"
 #include "di/types/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Encoding Enc>
 constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Void>, FormatParseContext<Enc>&) {
     auto do_output = [](concepts::FormatContext auto& context, Void) -> Result<void> {

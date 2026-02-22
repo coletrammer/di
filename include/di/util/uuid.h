@@ -67,9 +67,9 @@ private:
     constexpr auto is_little_endian() const -> bool { return variant() == Variant::LittleEndian; }
 
     template<concepts::Encoding Enc>
-    constexpr friend auto tag_invoke(types::Tag<format::formatter_in_place>, InPlaceType<UUID>,
+    constexpr friend auto tag_invoke(types::Tag<fmt::formatter_in_place>, InPlaceType<UUID>,
                                      FormatParseContext<Enc>& parse_context, bool debug) {
-        return format::formatter<container::TransparentStringView, Enc>(parse_context, debug) %
+        return fmt::formatter<container::TransparentStringView, Enc>(parse_context, debug) %
                [](concepts::CopyConstructible auto formatter) {
                    return [=](concepts::FormatContext auto& context, UUID uuid) {
 #if DI_GCC

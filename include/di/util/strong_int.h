@@ -131,10 +131,10 @@ private:
     }
 
     template<concepts::Encoding Enc>
-    constexpr friend auto tag_invoke(types::Tag<format::formatter_in_place>, InPlaceType<StrongInt>,
+    constexpr friend auto tag_invoke(types::Tag<fmt::formatter_in_place>, InPlaceType<StrongInt>,
                                      FormatParseContext<Enc>& parse_context, bool debug) {
         using Base = meta::Conditional<detail::format_as_pointer<Tag>, void*, Type>;
-        return format::formatter<Base, Enc>(parse_context, debug) % [](concepts::CopyConstructible auto formatter) {
+        return fmt::formatter<Base, Enc>(parse_context, debug) % [](concepts::CopyConstructible auto formatter) {
             return [=](concepts::FormatContext auto& context, StrongInt self) {
                 if constexpr (concepts::Pointer<Base>) {
                     auto* pointer = reinterpret_cast<void*>(self.raw_value());

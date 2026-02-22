@@ -51,7 +51,7 @@ private:
     }
 
     template<concepts::Encoding Enc>
-    constexpr friend auto tag_invoke(types::Tag<format::formatter_in_place>, InPlaceType<PercentEncoded>,
+    constexpr friend auto tag_invoke(types::Tag<fmt::formatter_in_place>, InPlaceType<PercentEncoded>,
                                      FormatParseContext<Enc>&) {
         auto do_output = [](concepts::FormatContext auto& context,
                             concepts::DecaySameAs<PercentEncoded> auto&& percent_encoded) -> Result<> {

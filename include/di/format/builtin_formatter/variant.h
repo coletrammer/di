@@ -6,19 +6,19 @@
 #include "di/format/concepts/formattable.h"
 #include "di/format/formatter.h"
 #include "di/format/make_format_args.h"
-#include "di/format/vpresent_encoded_context.h"
+#include "di/format/vformat_encoded_context.h"
 #include "di/meta/util.h"
 #include "di/vocab/variant/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Formattable... Types, concepts::Encoding Enc>
 constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Variant<Types...>>, FormatParseContext<Enc>&) {
     auto do_output = [](concepts::FormatContext auto& context,
                         concepts::DecaySameAs<Variant<Types...>> auto&& variant) -> Result<void> {
         return di::visit(
             [&](auto&& value) -> Result<void> {
-                return vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-                    u8"{}"_sv, format::make_format_args<decltype(context)>(value), context, true);
+                return vformat_encoded_context<meta::Encoding<decltype(context)>>(
+                    u8"{}"_sv, fmt::make_format_args<decltype(context)>(value), context, true);
             },
             variant);
     };
@@ -30,8 +30,8 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Expected<T
     auto do_output = [](concepts::FormatContext auto& context,
                         concepts::DecaySameAs<Expected<T, E>> auto&& expected) -> Result<void> {
         if (expected.has_value()) {
-            return vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-                u8"{}"_sv, format::make_format_args<decltype(context)>(expected.value()), context, true);
+            return vformat_encoded_context<meta::Encoding<decltype(context)>>(
+                u8"{}"_sv, fmt::make_format_args<decltype(context)>(expected.value()), context, true);
         }
 
         (void) context.output(U'U');
@@ -45,8 +45,8 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Expected<T
         (void) context.output(U'e');
         (void) context.output(U'd');
         (void) context.output(U'(');
-        auto result = vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-            u8"{}"_sv, format::make_format_args<decltype(context)>(expected.error()), context, true);
+        auto result = vformat_encoded_context<meta::Encoding<decltype(context)>>(
+            u8"{}"_sv, fmt::make_format_args<decltype(context)>(expected.error()), context, true);
         (void) context.output(U')');
         return result;
     };

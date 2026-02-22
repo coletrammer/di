@@ -6,7 +6,7 @@
 #include "di/meta/vocab.h"
 #include "di/types/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 struct FormatterInPlaceFunction {
     template<typename T, concepts::Encoding Enc>
     requires(concepts::TagInvocable<FormatterInPlaceFunction, InPlaceType<T>, FormatParseContext<Enc>&, bool> ||
@@ -32,5 +32,5 @@ requires(requires { formatter_in_place(in_place_type<meta::RemoveCVRef<T>>, pars
 }
 
 namespace di {
-using format::formatter_in_place;
+using fmt::formatter_in_place;
 }

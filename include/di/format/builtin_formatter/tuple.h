@@ -6,11 +6,11 @@
 #include "di/format/concepts/formattable.h"
 #include "di/format/formatter.h"
 #include "di/format/make_format_args.h"
-#include "di/format/vpresent_encoded_context.h"
+#include "di/format/vformat_encoded_context.h"
 #include "di/meta/util.h"
 #include "di/vocab/tuple/prelude.h"
 
-namespace di::format {
+namespace di::fmt {
 template<concepts::Formattable... Types, concepts::Encoding Enc>
 constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Tuple<Types...>>, FormatParseContext<Enc>&) {
     auto do_output = [](concepts::FormatContext auto& context,
@@ -25,8 +25,8 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Tuple<Type
                     context.output(' ');
                 }
                 first = false;
-                return vpresent_encoded_context<meta::Encoding<decltype(context)>>(
-                    u8"{}"_sv, format::make_format_args<decltype(context)>(value), context, true);
+                return vformat_encoded_context<meta::Encoding<decltype(context)>>(
+                    u8"{}"_sv, fmt::make_format_args<decltype(context)>(value), context, true);
             },
             util::forward<decltype(tuple)>(tuple));
         (void) results;

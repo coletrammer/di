@@ -64,7 +64,7 @@ private:
     constexpr static auto base64_digit_to_value(char value) -> u8 { return alphabet()[value]; }
 
     template<concepts::Encoding Enc>
-    constexpr friend auto tag_invoke(types::Tag<format::formatter_in_place>, InPlaceType<Base64>,
+    constexpr friend auto tag_invoke(types::Tag<fmt::formatter_in_place>, InPlaceType<Base64>,
                                      FormatParseContext<Enc>&) {
         auto do_output = [](concepts::FormatContext auto& context,
                             concepts::DecaySameAs<Base64> auto&& base64) -> Result<> {

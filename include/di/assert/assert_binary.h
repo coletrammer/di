@@ -23,22 +23,22 @@ void binary_assert_fail(char const* expression, T&& a, U&& b, util::SourceLocati
     // Allocate a 1024 byte buffer on the stack to stringify a and b. We'd don't want to allocate here because this
     // assertion could indicate heap corruption, or even be triggered before the heap is initialized.
     using Enc = container::string::Utf8Encoding;
-    using TargetContext = format::BoundedFormatContext<Enc, meta::Constexpr<1024ZU>>;
+    using TargetContext = fmt::BoundedFormatContext<Enc, meta::Constexpr<1024ZU>>;
 
     auto lhs_context = TargetContext {};
     auto const* lhs_data_pointer = static_cast<char const*>(nullptr);
     if constexpr (concepts::Formattable<T>) {
-        (void) di::format::vpresent_encoded_context<Enc>(
+        (void) di::fmt::vformat_encoded_context<Enc>(
             di::container::string::StringViewImpl<Enc>(encoding::assume_valid, u8"{}", 2),
-            di::format::make_format_args<TargetContext>(a), lhs_context, true);
+            di::fmt::make_format_args<TargetContext>(a), lhs_context, true);
         lhs_data_pointer = reinterpret_cast<char const*>(lhs_context.output().span().data());
     }
     auto rhs_context = TargetContext {};
     auto const* rhs_data_pointer = static_cast<char const*>(nullptr);
     if constexpr (concepts::Formattable<U>) {
-        (void) di::format::vpresent_encoded_context<Enc>(
+        (void) di::fmt::vformat_encoded_context<Enc>(
             di::container::string::StringViewImpl<Enc>(encoding::assume_valid, u8"{}", 2),
-            di::format::make_format_args<TargetContext>(b), rhs_context, true);
+            di::fmt::make_format_args<TargetContext>(b), rhs_context, true);
         rhs_data_pointer = reinterpret_cast<char const*>(rhs_context.output().span().data());
     }
     assert_fail(expression, lhs_data_pointer, rhs_data_pointer, loc);

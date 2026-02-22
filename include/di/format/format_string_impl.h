@@ -8,7 +8,7 @@
 #include "di/meta/util.h"
 #include "di/util/source_location.h"
 
-namespace di::format {
+namespace di::fmt {
 namespace detail {
     template<concepts::Encoding Enc, concepts::Formattable... Args>
     class FormatStringImpl {
@@ -17,7 +17,7 @@ namespace detail {
 
     public:
         consteval FormatStringImpl(StringView view) : m_view(view) {
-            auto parse_context = format::FormatParseContext<Enc> { view, sizeof...(Args) };
+            auto parse_context = fmt::FormatParseContext<Enc> { view, sizeof...(Args) };
             for (auto part : parse_context) {
                 if (!part) {
                     util::compile_time_fail<FixedString { "Invalid format string." }>();
@@ -28,7 +28,7 @@ namespace detail {
                 if constexpr (sizeof...(Args) > 0) {
                     auto arg_index = util::get<1>(*part).index;
                     function::index_dispatch<void, sizeof...(Args)>(arg_index, [&]<size_t index>(Constexpr<index>) {
-                        auto formatter = format::formatter<meta::At<meta::List<Args...>, index>>(parse_context);
+                        auto formatter = fmt::formatter<meta::At<meta::List<Args...>, index>>(parse_context);
                         if (!formatter) {
                             util::compile_time_fail<FixedString { "Invalid format string argument format." }>();
                         }
@@ -74,5 +74,5 @@ using FormatStringWithLocationImpl = detail::FormatStringWithLocationImpl<Enc, m
 }
 
 namespace di {
-using format::FormatStringImpl;
+using fmt::FormatStringImpl;
 }

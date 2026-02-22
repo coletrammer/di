@@ -27,7 +27,7 @@ public:
         }
     }
 
-    constexpr auto with_style(format::Style style, concepts::InvocableTo<Result<void>> auto inner) -> Result<void> {
+    constexpr auto with_style(fmt::Style style, concepts::InvocableTo<Result<void>> auto inner) -> Result<void> {
         if (!m_print_colors) {
             return inner();
         }
