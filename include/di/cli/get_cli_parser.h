@@ -30,6 +30,9 @@ namespace detail {
 
 template<typename T>
 constexpr inline auto get_cli_parser = detail::GetCliParserFunction<T> {};
+
+template<typename T>
+concept HasCliParser = requires { get_cli_parser<T>(); };
 }
 
 namespace di {

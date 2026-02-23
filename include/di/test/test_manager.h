@@ -28,7 +28,7 @@ public:
         bool help { false };
 
         constexpr static auto get_cli_parser() {
-            return di::cli_parser<Args>("dius_test"_sv, "Dius Test Runner"_sv)
+            return di::cli_parser<Args>("di_test"_tsv, "Di Test Runner"_sv)
                 .help()
                 .option<&Args::list_simple>('L', "list-simple"_tsv,
                                             "Output a simple machine readable list of test cases"_sv)

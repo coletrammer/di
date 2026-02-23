@@ -44,7 +44,7 @@ auto main(int argc, char** argv) -> int {
 
     auto as_span = args.span();
     auto parser = di::get_cli_parser<di::test::TestManager::Args>();
-    auto result = parser.parse(as_span);
+    auto result = parser.parse(as_span, writer);
     if (!result) {
         di::writer_println<di::StringView::Encoding>(writer, "Failed to parse command line arguments."_sv);
         di::writer_println<di::StringView::Encoding>(writer, "Run with '--help' for all list of valid options."_sv);
