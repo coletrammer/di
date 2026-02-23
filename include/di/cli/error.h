@@ -79,9 +79,28 @@ struct ExtraArguments {
     auto operator==(ExtraArguments const&) const -> bool = default;
 };
 
+struct ParseSubcommandError {
+    di::TransparentStringView subcommand_name;
+    di::Error parse_error;
+
+    auto operator==(ParseSubcommandError const&) const -> bool = default;
+};
+
+struct UnknownSubcommand {
+    di::TransparentStringView bad_subcommand;
+    di::Optional<di::TransparentStringView> closest_match;
+
+    auto operator==(UnknownSubcommand const&) const -> bool = default;
+};
+
+struct MissingSubcommand {
+    auto operator==(MissingSubcommand const&) const -> bool = default;
+};
+
 using ErrorVariant =
     Variant<ParseArgumentError, ParseOptionError, ShortOptionMissingRequiredValue, LongOptionMissingRequiredValue,
-            MissingRequiredOption, MissingRequiredArgument, UnknownShortOption, UnknownLongOption, ExtraArguments>;
+            MissingRequiredOption, MissingRequiredArgument, UnknownShortOption, UnknownLongOption, ExtraArguments,
+            ParseSubcommandError, UnknownSubcommand, MissingSubcommand>;
 
 struct ConcreteError {
     ErrorVariant error;
@@ -170,6 +189,7 @@ protected:
         constexpr auto argument_effect = di::FormatColor::Green;
         constexpr auto option_effect = di::FormatColor::Cyan;
         constexpr auto value_effect = di::FormatEffect::Bold;
+        constexpr auto subcommand_effect = di::FormatEffect::Bold;
 
         auto const& value = down_cast(code).value().inner();
         auto writer = StringWriter<>(value.use_colors);
@@ -235,6 +255,21 @@ protected:
                       [&](ExtraArguments const& error) {
                           writer_print<Enc>(writer, "Extra arguments {} are not recognized"_sv,
                                             di::Styled(error.extra_arguments, value_effect));
+                      },
+                      [&](ParseSubcommandError const& error) {
+                          writer_print<Enc>(writer, "Failed parsing arguments for subcommand '{}': {}"_sv,
+                                            di::Styled(error.subcommand_name, subcommand_effect), error.parse_error);
+                      },
+                      [&](UnknownSubcommand const& error) {
+                          writer_print<Enc>(writer, "Subcommand '{}' is not recognized"_sv,
+                                            di::Styled(error.bad_subcommand, subcommand_effect));
+                          if (error.closest_match) {
+                              writer_print<Enc>(writer, ". Did you mean '{}'?"_sv,
+                                                di::Styled(error.closest_match.value(), subcommand_effect));
+                          }
+                      },
+                      [&](MissingSubcommand const&) {
+                          writer_print<Enc>(writer, "No subcommand argument specified"_sv);
                       }),
                   value.error);
         return di::move(writer).output();

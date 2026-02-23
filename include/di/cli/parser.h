@@ -4,6 +4,7 @@
 #include "di/cli/argument.h"
 #include "di/cli/error.h"
 #include "di/cli/option.h"
+#include "di/cli/subcommand.h"
 #include "di/container/algorithm/any_of.h"
 #include "di/container/algorithm/prelude.h"
 #include "di/container/algorithm/rotate.h"
@@ -11,8 +12,13 @@
 #include "di/container/string/string_view.h"
 #include "di/container/string/utf8_encoding.h"
 #include "di/container/vector/static_vector.h"
+#include "di/container/view/concat.h"
+#include "di/container/view/filter.h"
+#include "di/container/view/join_with.h"
 #include "di/container/view/repeat.h"
+#include "di/container/view/transform.h"
 #include "di/format/style.h"
+#include "di/function/dereference.h"
 #include "di/function/monad/monad_try.h"
 #include "di/function/not_fn.h"
 #include "di/function/prelude.h"
@@ -21,8 +27,10 @@
 #include "di/io/writer_print.h"
 #include "di/io/writer_println.h"
 #include "di/math/numeric_limits.h"
+#include "di/meta/algorithm.h"
 #include "di/meta/constexpr.h"
 #include "di/meta/language.h"
+#include "di/meta/operations.h"
 #include "di/vocab/optional/lift_bool.h"
 
 namespace di::cli {
@@ -32,17 +40,18 @@ namespace detail {
     private:
         constexpr static auto max_options = 100ZU;
         constexpr static auto max_arguments = 100ZU;
+        constexpr static auto max_subcommands = 100ZU;
 
     public:
-        constexpr explicit Parser(StringView app_name, StringView description)
+        constexpr explicit Parser(TransparentStringView app_name, StringView description)
             : m_app_name(app_name), m_description(description) {}
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
-                 concepts::SameAs<Base, meta::MemberPointerClass<decltype(member)>>)
+                 concepts::DerivedFrom<Base, meta::MemberPointerClass<decltype(member)>>)
         constexpr auto option(Optional<char> short_name, Optional<TransparentStringView> long_name,
-                              StringView description, bool required = false, bool always_succeed = false) && {
-            auto new_option = Option { c_<member>, short_name, long_name, description, required, always_succeed };
+                              StringView description, bool required = false, bool is_help = false) && {
+            auto new_option = Option { c_<member>, short_name, long_name, description, required, is_help };
             DI_ASSERT(m_options.push_back(new_option));
             return di::move(*this);
         }
@@ -59,26 +68,54 @@ namespace detail {
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
-                 concepts::SameAs<Base, meta::MemberPointerClass<decltype(member)>>)
+                 concepts::DerivedFrom<Base, meta::MemberPointerClass<decltype(member)>>)
         constexpr auto argument(StringView name, StringView description, bool required = false) && {
+            DI_ASSERT(!has_subcommands());
             auto new_argument = Argument { c_<member>, name, description, required };
             DI_ASSERT(m_arguments.push_back(new_argument));
             return di::move(*this);
         }
 
+        template<auto member>
+        requires(concepts::MemberObjectPointer<decltype(member)> &&
+                 concepts::DerivedFrom<Base, meta::MemberPointerClass<decltype(member)>> &&
+                 concepts::InstanceOf<meta::MemberPointerValue<decltype(member)>, Variant>)
+        constexpr auto subcommands() && {
+            DI_ASSERT(!has_arguments());
+
+            auto do_subcommand = [&]<typename Type>(InPlaceType<Type>) {
+                if constexpr (!SameAs<Type, Void>) {
+                    DI_ASSERT(m_subcommands.push_back(Subcommand { c_<member>, in_place_type<Type> }));
+                } else {
+                    m_subcommand_is_required = true;
+                }
+            };
+
+            auto do_subcommands = [&]<typename... Types>(InPlaceType<Variant<Types...>>) {
+                (do_subcommand(in_place_type<Types>), ...);
+            };
+
+            do_subcommands(in_place_type<meta::MemberPointerValue<decltype(member)>>);
+            return di::move(*this);
+        }
+
+        template<Impl<io::Writer> Writer>
         // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-        constexpr auto parse(Span<TransparentStringView> args, bool use_colors = false) -> Result<Base> {
+        constexpr auto parse(Span<TransparentStringView> args, Writer& writer,
+                             Span<TransparentStringView> base_commands = {}) -> Result<Base> {
             using namespace di::string_literals;
 
             // The first argument is the name of the command, so its ignored for parsing.
+            auto const use_colors = io::interactive_device(writer);
             if (!args.empty()) {
                 args = *args.subspan(1);
             }
 
-            auto seen_arguments = Array<bool, max_options> {};
-            seen_arguments.fill(false);
+            auto seen_options = Array<bool, max_options> {};
+            seen_options.fill(false);
 
             auto count_option_processed = usize { 0 };
+            auto subcommand_seen = false;
 
             auto send_arg_to_back = [&](usize i) {
                 container::rotate(*args.subspan(i), args.begin() + i + 1);
@@ -92,7 +129,23 @@ namespace detail {
 
                 // Handle positional argument.
                 if (!arg.starts_with('-')) {
-                    continue;
+                    if (!has_subcommands()) {
+                        continue;
+                    }
+
+                    // Now we need to match the subcommand to the argument.
+                    auto subcommand_index = lookup_subcommand(arg);
+                    if (!subcommand_index) {
+                        return Unexpected(Error(UnknownSubcommand(arg, closest_subcommand_match(arg)), use_colors));
+                    }
+
+                    DI_TRY(subcommand_parse(
+                        subcommand_index.value(), &result,
+                        args.subspan(arg_index, args.size() - arg_index - count_option_processed).value(), writer,
+                        base_commands));
+                    count_option_processed = args.size();
+                    subcommand_seen = true;
+                    break;
                 }
 
                 // Handle exactly "--".
@@ -109,22 +162,21 @@ namespace detail {
                             return Unexpected(Error(UnknownShortOption(arg[char_index]), use_colors));
                         }
 
+                        if (option_is_help(*index)) {
+                            write_help(writer, base_commands);
+                            return Unexpected(BasicError::Success);
+                        }
+
                         // Parse boolean flag.
                         if (option_boolean(*index)) {
-                            DI_TRY(option_parse(*index, seen_arguments, &result, {}, false, use_colors));
-                            if (option_always_succeeds(*index)) {
-                                return result;
-                            }
+                            DI_TRY(option_parse(*index, seen_options, &result, {}, false, use_colors));
                             continue;
                         }
 
                         // Parse short option with directly specified value: '-iinput.txt'
                         auto value_view = arg.substr(arg.begin() + isize(char_index + 1));
                         if (!value_view.empty()) {
-                            DI_TRY(option_parse(*index, seen_arguments, &result, value_view, false, use_colors));
-                            if (option_always_succeeds(*index)) {
-                                return result;
-                            }
+                            DI_TRY(option_parse(*index, seen_options, &result, value_view, false, use_colors));
                             break;
                         }
 
@@ -134,10 +186,7 @@ namespace detail {
                         }
 
                         // Use the next argument as the value.
-                        DI_TRY(option_parse(*index, seen_arguments, &result, args[arg_index + 1], false, use_colors));
-                        if (option_always_succeeds(*index)) {
-                            return result;
-                        }
+                        DI_TRY(option_parse(*index, seen_options, &result, args[arg_index + 1], false, use_colors));
                         send_arg_to_back(arg_index);
                         i++;
                     }
@@ -159,11 +208,18 @@ namespace detail {
                     return Unexpected(Error(UnknownLongOption(name, closest_option_match(name)), use_colors));
                 }
 
+                if (option_is_help(*index)) {
+                    write_help(writer, base_commands);
+                    return Unexpected(BasicError::Success);
+                }
+
                 if (option_boolean(*index)) {
-                    DI_TRY(option_parse(*index, seen_arguments, &result, {}, true, use_colors));
-                    if (option_always_succeeds(*index)) {
-                        return result;
+                    auto value = Optional<TransparentStringView> {};
+                    if (equal) {
+                        value = arg.substr(equal.end());
                     }
+
+                    DI_TRY(option_parse(*index, seen_options, &result, value, true, use_colors));
                     send_arg_to_back(arg_index);
                     continue;
                 }
@@ -182,18 +238,20 @@ namespace detail {
                     send_arg_to_back(arg_index);
                 }
 
-                DI_TRY(option_parse(*index, seen_arguments, &result, value, true, use_colors));
-                if (option_always_succeeds(*index)) {
-                    return result;
-                }
+                DI_TRY(option_parse(*index, seen_options, &result, value, true, use_colors));
             }
 
-            // Validate all required arguments were processed.
+            // Validate all required options were processed.
             for (usize i = 0; i < m_options.size(); i++) {
-                if (!seen_arguments[i] && option_required(i)) {
+                if (!seen_options[i] && option_required(i)) {
                     return Unexpected(
                         Error(MissingRequiredOption(m_options[i].short_name(), m_options[i].long_name()), use_colors));
                 }
+            }
+
+            // If we have subcommands, we should've already matched them.
+            if (has_subcommands() && m_subcommand_is_required && !subcommand_seen) {
+                return Unexpected(Error(MissingSubcommand(), use_colors));
             }
 
             // All the positional arguments are now at the front of the array.
@@ -226,7 +284,7 @@ namespace detail {
         }
 
         template<Impl<io::Writer> Writer>
-        constexpr void write_help(Writer& writer) const {
+        constexpr void write_help(Writer& writer, Span<TransparentStringView> base_commands = {}) const {
             using Enc = container::string::Utf8Encoding;
 
             constexpr auto header_effect = di::FormatEffect::Bold | di::FormatColor::Yellow;
@@ -234,12 +292,15 @@ namespace detail {
             constexpr auto option_effect = di::FormatColor::Cyan;
             constexpr auto option_value_effect = di::FormatColor::Green;
             constexpr auto argument_effect = di::FormatColor::Green;
+            constexpr auto subcommand_effect = di::FormatEffect::Bold;
 
+            auto program_name =
+                concat(base_commands, single(m_app_name)) | join_with(' ') | di::to<TransparentString>();
             io::writer_println<Enc>(writer, "{}"_sv, di::Styled("NAME:"_sv, header_effect));
-            io::writer_println<Enc>(writer, "  {}: {}"_sv, di::Styled(m_app_name, program_effect), m_description);
+            io::writer_println<Enc>(writer, "  {}: {}"_sv, di::Styled(program_name, program_effect), m_description);
 
             io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("USAGE:"_sv, header_effect));
-            io::writer_print<Enc>(writer, "  {}"_sv, di::Styled(m_app_name, program_effect));
+            io::writer_print<Enc>(writer, "  {}"_sv, di::Styled(program_name, program_effect));
             if (di::any_of(m_options, di::not_fn(&Option::required))) {
                 io::writer_print<Enc>(writer, " [OPTIONS]"_sv);
             }
@@ -255,7 +316,22 @@ namespace detail {
             for (auto const& argument : m_arguments) {
                 io::writer_print<Enc>(writer, " {}"_sv, di::Styled(argument.display_name(), argument_effect));
             }
+            if (has_subcommands()) {
+                auto display_name = m_subcommand_is_required ? "COMMAND"_sv : "[COMMAND]"_sv;
+                io::writer_print<Enc>(writer, " {}"_sv, display_name);
+            }
             io::writer_println<Enc>(writer, ""_sv);
+
+            if (has_subcommands()) {
+                io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("COMMANDS:"_sv, header_effect));
+                auto first = true;
+                for (auto const& subcommand : m_subcommands) {
+                    io::writer_println<Enc>(writer, "  {}: {}{}"_sv, di::Styled(subcommand.name(), subcommand_effect),
+                                            subcommand.description(),
+                                            first && !m_subcommand_is_required ? " (default)"_sv : ""_sv);
+                    first = false;
+                }
+            }
 
             if (!m_arguments.empty()) {
                 io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("ARGUMENTS:"_sv, header_effect));
@@ -289,25 +365,34 @@ namespace detail {
             }
         }
 
-        constexpr auto help_string() const {
+        constexpr auto help_string(Span<TransparentStringView> base_commands = {}) const {
             auto writer = di::StringWriter {};
-            write_help(writer);
+            write_help(writer, base_commands);
             return di::move(writer).output();
         }
 
+        constexpr auto app_name() const -> TransparentStringView { return m_app_name; }
+        constexpr auto app_description() const -> StringView { return m_description; }
+        constexpr auto has_subcommands() const -> bool { return !m_subcommands.empty(); }
+        constexpr auto has_arguments() const -> bool { return !m_arguments.empty(); }
+
     private:
-        constexpr auto closest_option_match(di::TransparentStringView name) -> di::Optional<di::TransparentStringView> {
+        constexpr static auto closest_match(TransparentStringView name, Span<TransparentStringView> possibilities)
+            -> Optional<TransparentStringView> {
+            if (name.empty()) {
+                return {};
+            }
+
             auto result = ""_tsv;
             auto score = NumericLimits<i32>::max;
-            for (auto const& option : m_options) {
-                auto option_name = option.long_name();
-                if (!option_name || name.empty() || option_name.empty()) {
+            for (auto possibility : possibilities) {
+                if (possibility.empty()) {
                     continue;
                 }
 
                 auto dp = di::Vector<di::Vector<i32>> {};
                 for (auto _ : range(name.size() + 1)) {
-                    dp.push_back(repeat(NumericLimits<i32>::max, option_name.value().size() + 1) | di::to<Vector>());
+                    dp.push_back(repeat(NumericLimits<i32>::max, possibility.size() + 1) | di::to<Vector>());
                 }
 
                 for (auto x : range(dp.size())) {
@@ -322,14 +407,14 @@ namespace detail {
                         dp[i][j] = di::min({
                             1 + dp[i - 1][j],
                             1 + dp[i][j - 1],
-                            i32(name[i] != option_name.value()[j]) + dp[i - 1][j - 1],
+                            i32(name[i] != possibility[j]) + dp[i - 1][j - 1],
                         });
                     }
                 }
 
                 auto new_score = dp.back().value().back().value();
                 if (new_score < score) {
-                    result = option_name.value();
+                    result = possibility;
                     score = new_score;
                 }
             }
@@ -339,9 +424,21 @@ namespace detail {
             return {};
         }
 
+        constexpr auto closest_option_match(TransparentStringView name) const -> Optional<TransparentStringView> {
+            auto possibilities = m_options | transform(&Option::long_name) |
+                                 filter(&Optional<TransparentStringView>::has_value) | transform(dereference) |
+                                 di::to<Vector>();
+            return closest_match(name, possibilities.span());
+        }
+
+        constexpr auto closest_subcommand_match(TransparentStringView name) const -> Optional<TransparentStringView> {
+            auto possibilities = m_subcommands | transform(&Subcommand::name) | di::to<Vector>();
+            return closest_match(name, possibilities.span());
+        }
+
         constexpr auto option_required(usize index) const -> bool { return m_options[index].required(); }
         constexpr auto option_boolean(usize index) const -> bool { return m_options[index].boolean(); }
-        constexpr auto option_always_succeeds(usize index) const -> bool { return m_options[index].always_succeeds(); }
+        constexpr auto option_is_help(usize index) const -> bool { return m_options[index].is_help(); }
 
         constexpr auto option_parse(usize index, Span<bool> seen_arguments, Base* output,
                                     Optional<TransparentStringView> input, bool is_long, bool use_colors) const
@@ -382,6 +479,26 @@ namespace detail {
 
         constexpr auto argument_count() const -> usize { return m_arguments.size(); }
 
+        constexpr auto subcommand_parse(usize index, Base* output, Span<TransparentStringView> input,
+                                        AnyRef<Writer> writer, Span<TransparentStringView> base_commands) const
+            -> Result<> {
+            auto new_base_commands = base_commands | di::to<Vector>();
+            new_base_commands.push_back(m_app_name);
+            return m_subcommands[index]
+                .parse(output, input, writer, new_base_commands.span())
+                .transform_error([&](auto error) -> di::Error {
+                    if (error.success()) {
+                        return error;
+                    }
+                    return Error(
+                        ParseSubcommandError {
+                            .subcommand_name = m_subcommands[index].name(),
+                            .parse_error = di::move(error),
+                        },
+                        io::interactive_device(writer));
+                });
+        }
+
         constexpr auto lookup_short_name(char short_name) const -> Optional<usize> {
             auto const* it = di::find(m_options, short_name, &Option::short_name);
             return lift_bool(it != m_options.end()) % [&] {
@@ -396,15 +513,24 @@ namespace detail {
             };
         }
 
-        StringView m_app_name;
+        constexpr auto lookup_subcommand(TransparentStringView subcommand_name) const -> Optional<usize> {
+            auto const* it = di::find(m_subcommands, subcommand_name, &Subcommand::name);
+            return lift_bool(it != m_subcommands.end()) % [&] {
+                return usize(it - m_subcommands.begin());
+            };
+        }
+
+        TransparentStringView m_app_name;
         StringView m_description;
         StaticVector<Option, Constexpr<max_options>> m_options;
         StaticVector<Argument, Constexpr<max_arguments>> m_arguments;
+        StaticVector<Subcommand, Constexpr<max_subcommands>> m_subcommands;
+        bool m_subcommand_is_required { false };
     };
 }
 
 template<concepts::Object T>
-constexpr auto cli_parser(StringView app_name, StringView description) {
+constexpr auto cli_parser(TransparentStringView app_name, StringView description) {
     return detail::Parser<T> { app_name, description };
 }
 }

@@ -44,13 +44,13 @@ public:
     template<auto member>
     constexpr explicit Option(Constexpr<member>, Optional<char> short_name = {},
                               Optional<TransparentStringView> long_name = {}, StringView description = {},
-                              bool required = false, bool always_succeeds = false)
+                              bool required = false, bool is_help = false)
         : m_parse(concrete_parse<member>)
         , m_short_name(short_name)
         , m_long_name(long_name)
         , m_description(description)
         , m_required(required)
-        , m_always_succeeds(always_succeeds)
+        , m_is_help(is_help)
         , m_boolean(di::SameAs<meta::MemberPointerValue<decltype(member)>, bool>) {}
 
     constexpr auto parse(void* base, Optional<TransparentStringView> input) const {
@@ -62,7 +62,7 @@ public:
     constexpr auto description() const { return m_description; }
     constexpr auto required() const { return m_required; }
     constexpr auto boolean() const { return m_boolean; }
-    constexpr auto always_succeeds() const { return m_always_succeeds; }
+    constexpr auto is_help() const { return m_is_help; }
 
     constexpr auto long_display_name() const {
         auto result = di::TransparentString {};
@@ -95,7 +95,7 @@ private:
     Optional<TransparentStringView> m_long_name;
     StringView m_description;
     bool m_required { false };
-    bool m_always_succeeds { false };
+    bool m_is_help { false };
     bool m_boolean { false };
 };
 }
