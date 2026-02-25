@@ -1,5 +1,6 @@
 #include "di/cli/prelude.h"
 #include "di/container/path/path.h"
+#include "di/reflect/prelude.h"
 #include "di/test/prelude.h"
 #include "di/vocab/variant/holds_alternative.h"
 
@@ -126,13 +127,23 @@ struct Sub2 {
     }
 };
 
+enum class MyEnum { Foo, Bar, Baz };
+
+constexpr static auto tag_invoke(di::Tag<di::reflect>, di::InPlaceType<MyEnum>) {
+    using enum MyEnum;
+    return di::make_enumerators<"MyEnum">(di::enumerator<"Foo", Foo, "d1">, di::enumerator<"Bar", Bar>,
+                                          di::enumerator<"Baz", Baz, "d3">);
+}
+
 struct Args4 {
     bool config { false };
+    MyEnum enum_ { MyEnum::Foo };
     di::Variant<di::Void, Sub1, Sub2> command;
 
     constexpr static auto get_cli_parser() {
         return di::cli_parser<Args4>("args4"_tsv, "With subcommands 2"_sv)
             .option<&Args4::config>('c', "config"_tsv, "configuration"_sv)
+            .option<&Args4::enum_>({}, "enum"_tsv, "enumerator"_sv, true)
             .subcommands<&Args4::command>();
     }
 };
@@ -142,9 +153,10 @@ static void subcommands() {
     auto help_writer = di::StringWriter<> {};
 
     {
-        auto args = di::Array { "args4"_tsv, "-c"_tsv, "sub1"_tsv, "-f"_tsv };
+        auto args = di::Array { "args4"_tsv, "--enum"_tsv, "Bar"_tsv, "-c"_tsv, "sub1"_tsv, "-f"_tsv };
         auto result = *parser.parse(args, help_writer);
         ASSERT(result.config);
+        ASSERT_EQ(result.enum_, MyEnum::Bar);
         ASSERT(di::holds_alternative<Sub1>(result.command));
         ASSERT_EQ(di::get<Sub1>(result.command).flag, true);
     }
@@ -160,7 +172,7 @@ USAGE:
 
 OPTIONS:
   -e, --enable: D1
-  -i, --input <VALUE>: D2
+  -i, --input <INPUT>: D2 (default: test.txt)
 )~"_sv);
 
     auto h2 = di::get_cli_parser<Args2>().help_string();
@@ -171,7 +183,7 @@ USAGE:
   test [OPTIONS] [FILE]
 
 ARGUMENTS:
-  [FILE]: Input file
+  [FILE]: Input file (default: test.txt)
 
 OPTIONS:
   -e, --enable: D1
@@ -196,7 +208,7 @@ OPTIONS:
   args4: With subcommands 2
 
 USAGE:
-  args4 [OPTIONS] COMMAND
+  args4 [OPTIONS] --enum <ENUM> COMMAND
 
 COMMANDS:
   sub1: Subcommand 1
@@ -204,6 +216,10 @@ COMMANDS:
 
 OPTIONS:
   -c, --config: configuration
+  --enum <ENUM>: enumerator
+      Foo: d1
+      Bar
+      Baz: d3
 )~"_sv);
 }
 

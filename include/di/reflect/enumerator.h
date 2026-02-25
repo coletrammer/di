@@ -6,11 +6,12 @@
 #include "di/vocab/tuple/tuple.h"
 
 namespace di::reflection {
-template<container::FixedString enumerator_name, auto enumerator_value>
+template<container::FixedString enumerator_name, auto enumerator_value, container::FixedString enumerator_description>
 requires(concepts::Enum<decltype(enumerator_value)>)
 struct Enumerator {
     constexpr static auto name = enumerator_name;
     constexpr static auto value = enumerator_value;
+    constexpr static auto description = enumerator_description;
 
     using Type = decltype(enumerator_value);
 
@@ -35,9 +36,9 @@ struct Enumerator {
     auto operator<=>(Enumerator const&) const = default;
 };
 
-template<container::FixedString enumerator_name, auto enumerator_value>
+template<container::FixedString enumerator_name, auto enumerator_value, container::FixedString description = "">
 requires(concepts::Enum<decltype(enumerator_value)>)
-constexpr auto enumerator = Enumerator<enumerator_name, enumerator_value> {};
+constexpr auto enumerator = Enumerator<enumerator_name, enumerator_value, description> {};
 }
 
 namespace di::concepts {

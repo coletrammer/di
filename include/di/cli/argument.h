@@ -1,5 +1,7 @@
 #pragma once
 
+#include "di/cli/value_type.h"
+#include "di/cli/zsh.h"
 #include "di/container/string/encoding.h"
 #include "di/container/string/prelude.h"
 #include "di/container/string/string_view.h"
@@ -12,6 +14,8 @@ namespace di::cli::detail {
 class Argument {
 private:
     using Parse = Result<> (*)(void*, Span<TransparentStringView>);
+    using GetValues = Vector<Tuple<String, StringView>> (*)();
+    using DefaultValue = String (*)();
 
     template<auto member>
     constexpr static auto concrete_variadic() -> bool {
@@ -53,10 +57,13 @@ public:
 
     template<auto member>
     constexpr explicit Argument(Constexpr<member>, StringView argument_name = {}, StringView description = {},
-                                bool required = false)
+                                bool required = false, Optional<ValueType> value_type = {})
         : m_parse(concrete_parse<member>)
+        , m_get_values(detail::concrete_get_values<meta::MemberPointerValue<decltype(member)>>)
+        , m_default_value(detail::concrete_default_value<member>)
         , m_argument_name(argument_name)
         , m_description(description)
+        , m_value_type(value_type.value_or(default_value_type<meta::MemberPointerValue<decltype(member)>>))
         , m_required(required)
         , m_variadic(concrete_variadic<member>()) {
         static_assert(concepts::MemberObjectPointer<decltype(member)>,
@@ -91,10 +98,25 @@ public:
         return result;
     }
 
+    constexpr auto default_value() const -> String { return m_default_value(); }
+    constexpr auto value_type() const -> ValueType { return m_value_type; }
+    constexpr auto values() const -> Vector<Tuple<String, StringView>> { return m_get_values(); }
+
+    constexpr auto zsh_completion_spec() const -> String {
+        auto var = variadic() ? "*"_sv : ""_sv;
+        auto optional = required_argument_count() > 0 ? ""_sv : ":"_sv;
+        auto values = this->values();
+        return format("{}:{} -- {}:{}"_sv, var, optional, zsh::escape_arg_description(description()),
+                      zsh::value_completions(m_value_type, values.span()));
+    }
+
 private:
     Parse m_parse { nullptr };
+    GetValues m_get_values { nullptr };
+    DefaultValue m_default_value { nullptr };
     StringView m_argument_name;
     StringView m_description;
+    ValueType m_value_type { ValueType::Unknown };
     bool m_required { false };
     bool m_variadic { false };
 };

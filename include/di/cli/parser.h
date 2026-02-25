@@ -5,6 +5,7 @@
 #include "di/cli/error.h"
 #include "di/cli/option.h"
 #include "di/cli/subcommand.h"
+#include "di/cli/zsh.h"
 #include "di/container/algorithm/any_of.h"
 #include "di/container/algorithm/prelude.h"
 #include "di/container/algorithm/rotate.h"
@@ -31,9 +32,22 @@
 #include "di/meta/constexpr.h"
 #include "di/meta/language.h"
 #include "di/meta/operations.h"
+#include "di/reflect/prelude.h"
+#include "di/util/construct.h"
 #include "di/vocab/optional/lift_bool.h"
 
 namespace di::cli {
+enum class Shell {
+    Bash,
+    Zsh,
+};
+
+constexpr static auto tag_invoke(Tag<reflect>, InPlaceType<Shell>) {
+    using enum Shell;
+    return di::make_enumerators<"Shell">(di::enumerator<"bash", Bash, "bash shell">,
+                                         di::enumerator<"zsh", Zsh, "zsh shell">);
+}
+
 namespace detail {
     template<concepts::Object Base>
     class Parser {
@@ -50,8 +64,10 @@ namespace detail {
         requires(concepts::MemberObjectPointer<decltype(member)> &&
                  concepts::DerivedFrom<Base, meta::MemberPointerClass<decltype(member)>>)
         constexpr auto option(Optional<char> short_name, Optional<TransparentStringView> long_name,
-                              StringView description, bool required = false, bool is_help = false) && {
-            auto new_option = Option { c_<member>, short_name, long_name, description, required, is_help };
+                              StringView description, bool required = false, Optional<StringView> value_name = {},
+                              Optional<ValueType> value_type = {}, bool is_help = false) && {
+            auto new_option =
+                Option { c_<member>, short_name, long_name, description, required, value_name, value_type, is_help };
             DI_ASSERT(m_options.push_back(new_option));
             return di::move(*this);
         }
@@ -63,15 +79,17 @@ namespace detail {
                 "A help message requires the argument type to have a boolean help member.");
             static_assert(SameAs<meta::MemberPointerValue<decltype(&Base::help)>, bool>,
                           "A help message requires the argument type to have a boolean help member.");
-            return di::move(*this).template option<&Base::help>(short_name, long_name, description, false, true);
+            return di::move(*this).template option<&Base::help>(short_name, long_name, description, false, {}, {},
+                                                                true);
         }
 
         template<auto member>
         requires(concepts::MemberObjectPointer<decltype(member)> &&
                  concepts::DerivedFrom<Base, meta::MemberPointerClass<decltype(member)>>)
-        constexpr auto argument(StringView name, StringView description, bool required = false) && {
+        constexpr auto argument(StringView name, StringView description, bool required = false,
+                                Optional<ValueType> value_type = {}) && {
             DI_ASSERT(!has_subcommands());
-            auto new_argument = Argument { c_<member>, name, description, required };
+            auto new_argument = Argument { c_<member>, name, description, required, value_type };
             DI_ASSERT(m_arguments.push_back(new_argument));
             return di::move(*this);
         }
@@ -294,6 +312,16 @@ namespace detail {
             constexpr auto argument_effect = di::FormatColor::Green;
             constexpr auto subcommand_effect = di::FormatEffect::Bold;
 
+            auto write_values = [&](Vector<Tuple<String, StringView>> values) {
+                if (values.empty() || values.size() > 10) {
+                    return;
+                }
+                for (auto const& [value, description] : values) {
+                    io::writer_println<Enc>(writer, "      {}{}{}"_sv, di::Styled(value, option_value_effect),
+                                            description.empty() ? ""_sv : ": "_sv, description);
+                }
+            };
+
             auto program_name =
                 concat(base_commands, single(m_app_name)) | join_with(' ') | di::to<TransparentString>();
             io::writer_println<Enc>(writer, "{}"_sv, di::Styled("NAME:"_sv, header_effect));
@@ -309,7 +337,8 @@ namespace detail {
                     io::writer_print<Enc>(writer, " {}"_sv, di::Styled(option.display_name(), option_effect));
 
                     if (!option.boolean()) {
-                        io::writer_print<Enc>(writer, " {}"_sv, di::Styled("<VALUE>"_sv, option_value_effect));
+                        io::writer_print<Enc>(writer, " {}"_sv,
+                                              di::Styled(format("<{}>"_sv, option.value_name()), option_value_effect));
                     }
                 }
             }
@@ -336,8 +365,16 @@ namespace detail {
             if (!m_arguments.empty()) {
                 io::writer_println<Enc>(writer, "\n{}"_sv, di::Styled("ARGUMENTS:"_sv, header_effect));
                 for (auto const& argument : m_arguments) {
-                    io::writer_println<Enc>(writer, "  {}: {}"_sv, di::Styled(argument.display_name(), argument_effect),
-                                            argument.description());
+                    auto default_value = argument.default_value();
+                    if (!default_value.empty() && argument.required_argument_count() == 0) {
+                        default_value = format(" (default: {})"_sv, default_value);
+                    } else {
+                        default_value = {};
+                    }
+                    io::writer_println<Enc>(writer, "  {}: {}{}"_sv,
+                                            di::Styled(argument.display_name(), argument_effect),
+                                            argument.description(), default_value);
+                    write_values(argument.values());
                 }
             }
 
@@ -348,7 +385,9 @@ namespace detail {
                     if (option.short_name()) {
                         io::writer_print<Enc>(writer, "{}"_sv, di::Styled(option.short_display_name(), option_effect));
                         if (!option.boolean() && !option.long_name()) {
-                            io::writer_print<Enc>(writer, " {}"_sv, di::Styled("<VALUE>"_sv, option_value_effect));
+                            io::writer_print<Enc>(
+                                writer, " {}"_sv,
+                                di::Styled(format("<{}>"_sv, option.value_name()), option_value_effect));
                         }
                     }
                     if (option.short_name() && option.long_name()) {
@@ -357,13 +396,127 @@ namespace detail {
                     if (option.long_name()) {
                         io::writer_print<Enc>(writer, "{}"_sv, di::Styled(option.long_display_name(), option_effect));
                         if (!option.boolean()) {
-                            io::writer_print<Enc>(writer, " {}"_sv, di::Styled("<VALUE>"_sv, option_value_effect));
+                            io::writer_print<Enc>(
+                                writer, " {}"_sv,
+                                di::Styled(format("<{}>"_sv, option.value_name()), option_value_effect));
                         }
                     }
-                    io::writer_println<Enc>(writer, ": {}"_sv, option.description());
+                    auto default_value = option.default_value();
+                    if (!default_value.empty() && !option.required()) {
+                        default_value = format(" (default: {})"_sv, default_value);
+                    } else {
+                        default_value = {};
+                    }
+                    io::writer_println<Enc>(writer, ": {}{}"_sv, option.description(), default_value);
+                    write_values(option.values());
                 }
             }
         }
+
+        template<Impl<io::Writer> Writer>
+        void write_zsh_completions_inner(Writer& writer, u32 indentation, Span<TransparentStringView> base_commands) {
+            auto indent = repeat(U' ', indentation) | di::to<String>();
+            auto extra_indent = "    "_sv;
+
+            using Enc = container::string::Utf8Encoding;
+            io::writer_println<Enc>(writer, "{}{}"_sv, indent, R"~(_arguments "${_arguments_options[@]}" : \)~"_sv);
+            for (auto const& option : m_options) {
+                for (auto const& spec : option.zsh_completion_specs()) {
+                    io::writer_println<Enc>(writer, "{}{}'{}' \\"_sv, indent, extra_indent, spec);
+                }
+            }
+            for (auto const& argument : m_arguments) {
+                auto spec = argument.zsh_completion_spec();
+                io::writer_println<Enc>(writer, "{}{}'{}' \\"_sv, indent, extra_indent, spec);
+            }
+
+            auto const state_name = concat(base_commands, single(m_app_name)) | join_with('_') |
+                                    transform(construct<c32>) | di::to<String>();
+            if (has_subcommands()) {
+                // Here we're just adding the optarg spec for the completions. Later we will add the subcommand logic.
+                auto possibilities = Vector<Tuple<String, StringView>> {};
+                for (auto const& subcommand : m_subcommands) {
+                    possibilities.emplace_back(format("{}"_sv, subcommand.name()), subcommand.description());
+                }
+                io::writer_println<Enc>(writer, "{}{}':::{}' \\"_sv, indent, extra_indent,
+                                        zsh::completion_value_map(possibilities.span()));
+                io::writer_println<Enc>(writer, "{}{}'*::: :->{}' \\"_sv, indent, extra_indent, state_name);
+            }
+            io::writer_println<Enc>(writer, "{}{}&& ret=0"_sv, indent, extra_indent);
+            if (has_subcommands()) {
+                io::writer_println<Enc>(writer, "{}case $state in"_sv, indent);
+                io::writer_println<Enc>(writer, "{}({})"_sv, indent, state_name);
+                io::writer_println<Enc>(writer, "{}{}words=($line[1] \"${{words[@]}}\")"_sv, indent, extra_indent);
+                io::writer_println<Enc>(writer, "{}{}(( CURRENT += 1 ))"_sv, indent, extra_indent);
+                io::writer_println<Enc>(writer, "{}{}curcontext=\"${{curcontext%:*:*}}:{}-command-$line[1]:\""_sv,
+                                        indent, extra_indent, state_name);
+                io::writer_println<Enc>(writer, "{}{}case $line[1] in"_sv, indent, extra_indent);
+
+                for (auto const& subcommand : m_subcommands) {
+                    io::writer_println<Enc>(writer, "{}{}{}({})"_sv, indent, extra_indent, extra_indent,
+                                            subcommand.name());
+                    auto new_base_commands = base_commands | di::to<Vector>();
+                    new_base_commands.push_back(m_app_name);
+                    subcommand.write_zsh_completions_inner(writer, indentation + 12, new_base_commands.span());
+                    io::writer_println<Enc>(writer, "{}{}{};;"_sv, indent, extra_indent, extra_indent);
+                }
+
+                io::writer_println<Enc>(writer, "{}{}esac"_sv, indent, extra_indent);
+                io::writer_println<Enc>(writer, "{}{};;"_sv, indent, extra_indent);
+                io::writer_println<Enc>(writer, "{}esac"_sv, indent);
+            }
+        }
+
+        template<Impl<io::Writer> Writer>
+        void write_zsh_completions(Writer& writer) {
+            using Enc = container::string::Utf8Encoding;
+
+            // The zsh completion header most declares the completion function and sets up the arguments.
+            // We want -s as we supported stacke short options, and -S since we support `--` as a delimiter.
+            // -C is needed for subcommand handling.
+            //
+            // The logic for completions is based off the rust create
+            // [clap_complete](https://docs.rs/crate/clap_complete/latest/source/)
+            io::writer_println<Enc>(writer, R"~(#compdef {}
+
+autoload -U is-at-least
+
+_{}() {{
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line)~"_sv,
+                                    m_app_name, m_app_name);
+
+            write_zsh_completions_inner(writer, 4, {});
+
+            io::writer_println<Enc>(writer, R"~(}}
+
+if [ "$funcstack[1]" = "_{}" ]; then
+    _{} "$@"
+else
+    compdef _{} {}
+fi)~"_sv,
+                                    m_app_name, m_app_name, m_app_name, m_app_name);
+        }
+
+        template<Impl<io::Writer> Writer>
+        void write_completions(Writer& writer, Shell shell) {
+            using enum Shell;
+            switch (shell) {
+                case Bash:
+                    break;
+                case Zsh:
+                    return write_zsh_completions(writer);
+            }
+        };
 
         constexpr auto help_string(Span<TransparentStringView> base_commands = {}) const {
             auto writer = di::StringWriter {};
