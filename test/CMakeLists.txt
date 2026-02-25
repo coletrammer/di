@@ -11,7 +11,7 @@ endif()
 
 # ---- Tests ----
 
-file(GLOB sources CONFIGURE_DEPENDS src/*.cpp)
+file(GLOB sources CONFIGURE_DEPENDS src/test_cli.cpp src/main.cpp)
 add_executable(di_test ${sources})
 
 target_link_libraries(di_test PRIVATE di::di)
