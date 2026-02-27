@@ -16,6 +16,7 @@ namespace di::cli::detail {
 class Subcommand {
 private:
     using Parse = Result<> (*)(void*, Span<TransparentStringView>, AnyRef<Writer>, Span<TransparentStringView>);
+    using BashCompletionsInner = void (*)(TreeMap<Vector<TransparentString>, String>&, Span<TransparentStringView>);
     using ZshCompletionsInner = void (*)(AnyRef<Writer>, u32, Span<TransparentStringView>);
 
     template<auto member, typename T>
@@ -27,6 +28,13 @@ private:
         auto parser = get_cli_parser<T>();
         (*output).*member = DI_TRY(parser.parse(input, writer, base_commands));
         return {};
+    }
+
+    template<typename T>
+    constexpr static void concrete_bash_completions_inner(TreeMap<Vector<TransparentString>, String>& states,
+                                                          Span<TransparentStringView> base_commands) {
+        auto parser = get_cli_parser<T>();
+        parser.bash_completions_inner(states, base_commands);
     }
 
     template<typename T>
@@ -42,6 +50,7 @@ public:
     template<auto member, typename T>
     constexpr explicit Subcommand(Constexpr<member>, InPlaceType<T>)
         : m_parse(concrete_parse<member, T>)
+        , m_bash_completions_inner(concrete_bash_completions_inner<T>)
         , m_write_zsh_completionions_inner(concrete_write_zsh_completions_inner<T>)
         , m_name(get_cli_parser<T>().app_name())
         , m_description(get_cli_parser<T>().app_description()) {}
@@ -50,6 +59,11 @@ public:
                          Span<TransparentStringView> base_commands = {}) const {
         DI_ASSERT(m_parse);
         return m_parse(base, input, writer, base_commands);
+    }
+
+    constexpr void inner_bash_completions(TreeMap<Vector<TransparentString>, String>& states,
+                                          Span<TransparentStringView> base_commands) const {
+        m_bash_completions_inner(states, base_commands);
     }
 
     constexpr void write_zsh_completions_inner(AnyRef<Writer> writer, u32 indentation,
@@ -62,6 +76,7 @@ public:
 
 private:
     Parse m_parse { nullptr };
+    BashCompletionsInner m_bash_completions_inner { nullptr };
     ZshCompletionsInner m_write_zsh_completionions_inner { nullptr };
     TransparentStringView m_name;
     StringView m_description;

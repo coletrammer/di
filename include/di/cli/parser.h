@@ -2,6 +2,7 @@
 
 #include "di/any/concepts/impl.h"
 #include "di/cli/argument.h"
+#include "di/cli/bash.h"
 #include "di/cli/error.h"
 #include "di/cli/option.h"
 #include "di/cli/subcommand.h"
@@ -302,6 +303,7 @@ namespace detail {
         }
 
         template<Impl<io::Writer> Writer>
+        // NOLINTNEXTLINE(readability-function-cognitive-complexity)
         constexpr void write_help(Writer& writer, Span<TransparentStringView> base_commands = {}) const {
             using Enc = container::string::Utf8Encoding;
 
@@ -413,6 +415,138 @@ namespace detail {
             }
         }
 
+        constexpr void bash_completions_inner(TreeMap<Vector<TransparentString>, String>& states,
+                                              Span<TransparentStringView> base_commands = {}) {
+            auto content = ""_s;
+            auto possible_values = Vector<String> {};
+            for (auto const& option : m_options) {
+                if (option.short_name()) {
+                    possible_values.push_back(to_string(option.short_display_name()));
+                }
+                if (option.long_name()) {
+                    possible_values.push_back(to_string(option.long_display_name()));
+                }
+            }
+            for (auto const& subcommand : m_subcommands) {
+                auto new_base_commands = base_commands | di::to<Vector>();
+                new_base_commands.push_back(m_app_name);
+                subcommand.inner_bash_completions(states, new_base_commands.span());
+
+                possible_values.push_back(to_string(subcommand.name()));
+            }
+            for (auto const& argument : m_arguments) {
+                for (auto& [value, _] : argument.values()) {
+                    possible_values.push_back(di::move(value));
+                }
+            }
+
+            content += format("            opts=\"{}\"\n"_sv,
+                              possible_values | transform(bash::escape_value) | join_with(U' ') | di::to<String>());
+            content += format("            if [[ ${{cur}} == -* || ${{COMP_WORD}} -eq {} ]]; then\n"_sv,
+                              base_commands.size() + 1);
+            content += format("                COMPREPLY=( $(compgen -W \"${{opts}}\" -- \"${{cur}}\") )\n"_sv);
+            content += format("                return 0\n"_sv);
+            content += format("            fi\n"_sv);
+            content += format("            case \"${{prev}}\" in\n"_sv);
+            for (auto const& option : m_options) {
+                if (option.boolean()) {
+                    continue;
+                }
+                auto pattern = ""_s;
+                if (option.short_name()) {
+                    pattern += to_string(option.short_display_name());
+                }
+                if (option.long_name()) {
+                    if (!pattern.empty()) {
+                        pattern.push_back(U'|');
+                    }
+                    pattern += to_string(option.long_display_name());
+                }
+                content += format("                {})\n"_sv, pattern);
+                auto values = option.values();
+                content += format("{}\n"_sv, bash::value_completions(option.value_type(), values.span()));
+                content += format("                    return 0\n"_sv);
+                content += format("                    ;;\n"_sv);
+            }
+            content += format("                *)\n"_sv);
+            content += format("                    COMPREPLY=( $(compgen -W \"${{opts}}\" -- \"${{cur}}\") )\n"_sv);
+            content += format("                    return 0\n"_sv);
+            content += format("                    ;;\n"_sv);
+            content += format("            esac\n"_sv);
+
+            auto state = Vector<TransparentString> {};
+            for (auto part : base_commands) {
+                state.push_back(part.to_owned());
+            }
+            state.push_back(m_app_name.to_owned());
+            states.try_emplace(di::move(state), content);
+        }
+
+        template<Impl<io::Writer> Writer>
+        constexpr void write_bash_completions(Writer& writer) {
+            using Enc = container::string::Utf8Encoding;
+
+            // The bash completion header primarily just registers our completion function. Unlike
+            // zsh, we handle subcommands by determining which subcommand by scanning all the arguments.
+            // Then completion logic is handled by compgen.
+            //
+            // The logic for completions is based off the rust create
+            // [clap_complete](https://docs.rs/crate/clap_complete/latest/source/)
+            io::writer_println<Enc>(writer, R"~(_{}() {{
+    local i cur prev opts cmd
+    COMPREPLY=()
+    if [[ "${{BASH_VERSINFO[0]}}" -ge 4 ]]; then
+        cur="$2"
+    else
+        cur="${{COMP_WORDS[COMP_CWORD]}}"
+    fi
+    prev="$3"
+    cmd=""
+    opts=""
+)~"_sv,
+                                    m_app_name);
+
+            auto states = TreeMap<Vector<TransparentString>, String> {};
+            bash_completions_inner(states);
+
+            auto state_name = [&](Span<TransparentString const> state) -> String {
+                return state | join_with('_') | transform(construct<c32>) | di::to<String>();
+            };
+
+            io::writer_println<Enc>(writer, "    for i in \"${{COMP_WORDS[@]:0:COMP_CWORD}}\"; do"_sv);
+            io::writer_println<Enc>(writer, "        case \"${{cmd}},${{i}}\" in"_sv);
+            for (auto const& [state, _] : states) {
+                auto condition = "\",$1\""_s;
+                if (state.size() > 1) {
+                    condition = format("{},{}"_sv, state_name(state.subspan(0, state.size() - 1).value()),
+                                       state.back().value());
+                }
+                io::writer_println<Enc>(writer, "            {})"_sv, condition);
+                io::writer_println<Enc>(writer, "                cmd=\"{}\""_sv, state_name(state.span()));
+                io::writer_println<Enc>(writer, "                ;;"_sv);
+            }
+            io::writer_println<Enc>(writer, "            *)  ;;"_sv);
+            io::writer_println<Enc>(writer, "        esac"_sv);
+            io::writer_println<Enc>(writer, "    done\n"_sv);
+
+            io::writer_println<Enc>(writer, "    case \"${{cmd}}\" in"_sv);
+            for (auto const& [state, logic] : states) {
+                io::writer_println<Enc>(writer, "        {})"_sv, state_name(state.span()));
+                io::writer_print<Enc>(writer, "{}"_sv, logic);
+                io::writer_println<Enc>(writer, "            ;;"_sv);
+            }
+            io::writer_println<Enc>(writer, "    esac"_sv);
+
+            io::writer_println<Enc>(writer, R"~(}}
+
+if [[ "${{BASH_VERSINFO[0]}}" -eq 4 && "${{BASH_VERSINFO[1]}}" -ge 4 || "${{BASH_VERSINFO[0]}}" -gt 4 ]]; then
+    complete -F _{} -o nosort -o bashdefault -o default {}
+else
+    complete -F _{} -o bashdefault -o default {}
+fi)~"_sv,
+                                    m_app_name, m_app_name, m_app_name, m_app_name);
+        }
+
         template<Impl<io::Writer> Writer>
         void write_zsh_completions_inner(Writer& writer, u32 indentation, Span<TransparentStringView> base_commands) {
             auto indent = repeat(U' ', indentation) | di::to<String>();
@@ -512,7 +646,7 @@ fi)~"_sv,
             using enum Shell;
             switch (shell) {
                 case Bash:
-                    break;
+                    return write_bash_completions(writer);
                 case Zsh:
                     return write_zsh_completions(writer);
             }
