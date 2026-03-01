@@ -3,8 +3,11 @@
 #ifndef DI_NO_USE_STD
 #include <bit>
 #else
+#include <di/meta/trivial.h>
+
 namespace std {
-template<typename To, typename From>
+template<di::concepts::TriviallyCopyable To, di::concepts::TriviallyCopyable From>
+requires(sizeof(To) == sizeof(From))
 constexpr auto bit_cast(From const& value) noexcept -> To {
     return __builtin_bit_cast(To, value);
 }
