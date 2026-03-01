@@ -1,5 +1,6 @@
 #pragma once
 
+#include "di/platform/compiler.h"
 #include "di/util/forward.h"
 #include "di/util/std_new.h"
 
@@ -7,11 +8,18 @@
 #include <memory>
 #else
 namespace std {
+#ifdef DI_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
 template<typename T, typename... Args>
 constexpr auto construct_at(T* location, Args&&... args) -> T* {
     return ::new (const_cast<void*>(static_cast<void const volatile*>(location))) T(di::util::forward<Args>(args)...);
 }
 }
+#ifdef DI_GCC
+#pragma GCC diagnostic pop
+#endif
 #endif
 
 namespace di::util {
