@@ -18,18 +18,17 @@ constexpr auto tag_invoke(types::Tag<formatter_in_place>, InPlaceType<Tuple<Type
         context.output('(');
         context.output(' ');
         bool first = true;
-        auto results = tuple_transform(
-            [&](auto&& value) -> Result<void> {
+        tuple_for_each(
+            [&](auto&& value) {
                 if (!first) {
                     context.output(',');
                     context.output(' ');
                 }
                 first = false;
-                return vformat_encoded_context<meta::Encoding<decltype(context)>>(
+                (void) vformat_encoded_context<meta::Encoding<decltype(context)>>(
                     u8"{}"_sv, fmt::make_format_args<decltype(context)>(value), context, true);
             },
             util::forward<decltype(tuple)>(tuple));
-        (void) results;
 
         context.output(' ');
         context.output(')');
