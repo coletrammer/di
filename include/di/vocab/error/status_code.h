@@ -1,5 +1,6 @@
 #pragma once
 
+#include "di/meta/core.h"
 #include "di/vocab/error/concepts/status_code_erasable_into.h"
 #include "di/vocab/error/into_status_code.h"
 #include "di/vocab/error/status_code_domain.h"
@@ -25,7 +26,8 @@ public:
         : StatusCode(into_status_code(util::forward<U>(v), util::forward<Args>(args)...)) {}
 
     template<typename... Args>
-    requires(concepts::ConstructibleFrom<Value, Args...>)
+    requires((sizeof...(Args) == 1 && (... && concepts::SameAs<Args &&, Value &&>) ) ||
+             concepts::ConstructibleFrom<Value, Args...>)
     constexpr explicit StatusCode(InPlace, Args&&... args)
         : Base(in_place, util::addressof(Domain::get()), util::forward<Args>(args)...) {}
 

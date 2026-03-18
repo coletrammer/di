@@ -11,6 +11,14 @@ namespace detail {
         constexpr auto operator()(Args&&... args) const -> concepts::StatusCode decltype(auto) {
             return function::tag_invoke(*this, util::forward<Args>(args)...);
         }
+
+        template<typename T, typename... Args>
+        requires(requires(T&& value, Args&&... args) {
+            di::forward<T>(value).into_status_code(di::forward<Args>(args)...);
+        })
+        constexpr auto operator()(T&& value, Args&&... args) const -> concepts::StatusCode decltype(auto) {
+            return di::forward<T>(value).into_status_code(di::forward<Args>(args)...);
+        }
     };
 }
 
