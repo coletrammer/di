@@ -7,11 +7,12 @@
 #include "di/vocab/tuple/tuple.h"
 
 namespace di::reflection {
-template<container::FixedString field_name, auto field_pointer>
+template<container::FixedString field_name, auto field_pointer, container::FixedString field_description>
 requires(concepts::MemberObjectPointer<decltype(field_pointer)>)
 struct Field {
     constexpr static auto name = field_name;
     constexpr static auto pointer = field_pointer;
+    constexpr static auto description = field_description;
 
     using Object = meta::MemberPointerClass<decltype(pointer)>;
     using Type = meta::MemberPointerValue<decltype(pointer)>;
@@ -41,9 +42,9 @@ struct Field {
     auto operator<=>(Field const&) const = default;
 };
 
-template<container::FixedString field_name, auto field_pointer>
+template<container::FixedString field_name, auto field_pointer, container::FixedString description = "">
 requires(concepts::MemberObjectPointer<decltype(field_pointer)>)
-constexpr auto field = Field<field_name, field_pointer> {};
+constexpr auto field = Field<field_name, field_pointer, description> {};
 }
 
 namespace di::concepts {
@@ -54,9 +55,10 @@ concept Field = requires {
 }
 
 namespace di::reflection {
-template<concepts::Constexpr ClassName, concepts::Field... Fs>
+template<concepts::Constexpr ClassName, concepts::Constexpr Description, concepts::Field... Fs>
 struct Fields : vocab::Tuple<Fs...> {
     constexpr static auto name = ClassName::value;
+    constexpr static auto description = Description::value;
 
     constexpr static auto is_fields() -> bool { return true; }
     constexpr static auto is_field() -> bool { return false; }
@@ -75,17 +77,17 @@ struct Fields : vocab::Tuple<Fs...> {
 };
 
 namespace detail {
-    template<container::FixedString class_name>
+    template<container::FixedString class_name, container::FixedString description>
     struct MakeFieldsFunction {
         template<concepts::Field... Fs>
         constexpr auto operator()(Fs...) const {
-            return Fields<meta::Constexpr<class_name>, Fs...> {};
+            return Fields<meta::Constexpr<class_name>, meta::Constexpr<description>, Fs...> {};
         }
     };
 }
 
-template<container::FixedString class_name>
-constexpr inline auto make_fields = detail::MakeFieldsFunction<class_name> {};
+template<container::FixedString class_name, container::FixedString description = "">
+constexpr inline auto make_fields = detail::MakeFieldsFunction<class_name, description> {};
 }
 
 namespace di {

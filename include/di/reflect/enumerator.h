@@ -49,9 +49,10 @@ concept Enumerator = requires {
 }
 
 namespace di::reflection {
-template<concepts::Constexpr EnumName, concepts::Enumerator... Es>
+template<concepts::Constexpr EnumName, concepts::Constexpr Description, concepts::Enumerator... Es>
 struct Enumerators : vocab::Tuple<Es...> {
     constexpr static auto name = EnumName::value;
+    constexpr static auto description = Description::value;
 
     constexpr static auto is_fields() -> bool { return false; }
     constexpr static auto is_field() -> bool { return false; }
@@ -70,17 +71,17 @@ struct Enumerators : vocab::Tuple<Es...> {
 };
 
 namespace detail {
-    template<container::FixedString enum_name>
+    template<container::FixedString enum_name, container::FixedString description>
     struct MakeEnumeratorsFunction {
         template<concepts::Enumerator... Es>
         constexpr auto operator()(Es...) const {
-            return Enumerators<meta::Constexpr<enum_name>, Es...> {};
+            return Enumerators<meta::Constexpr<enum_name>, meta::Constexpr<description>, Es...> {};
         }
     };
 }
 
-template<container::FixedString enum_name>
-constexpr inline auto make_enumerators = detail::MakeEnumeratorsFunction<enum_name> {};
+template<container::FixedString enum_name, container::FixedString description = "">
+constexpr inline auto make_enumerators = detail::MakeEnumeratorsFunction<enum_name, description> {};
 }
 
 namespace di {
