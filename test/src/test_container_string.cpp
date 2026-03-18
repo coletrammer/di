@@ -1,4 +1,5 @@
 #include "di/container/interface/erase.h"
+#include "di/container/string/conversion.h"
 #include "di/container/string/encoding.h"
 #include "di/container/string/prelude.h"
 #include "di/container/string/string.h"
@@ -226,6 +227,21 @@ constexpr static void null_terminated() {
     ASSERT_EQ(di::distance(di::ZCString { s.c_str() }), 2);
 }
 
+static void conversions() {
+    auto s = u8"o達!"_sv;
+    auto r = di::to_transparent_string(s);
+    ASSERT_EQ(r, "o\xe9\x81\x94!"_tsv);
+    ASSERT_EQ(di::to_utf8_string(r), u8"o達!"_sv);
+
+    // Invalid UTF-8 now
+    r.push_back(char(0x80));
+    auto t = di::to_utf8_string(r);
+    ASSERT_EQ(t, di::nullopt);
+
+    auto u = di::to_utf8_string_lossy(r);
+    ASSERT_EQ(u, u8"o達!�"_sv);
+}
+
 TESTC(container_string, basic)
 TESTC(container_string, push_back)
 TESTC(container_string, mutation)
@@ -235,4 +251,5 @@ TEST(container_string, erased_string)
 TESTC(container_string, utf8)
 TESTC(container_string, readonly_api)
 TESTC(container_string, null_terminated)
+TEST(container_string, conversions)
 }
