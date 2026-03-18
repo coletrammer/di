@@ -303,6 +303,14 @@ public:
         return **this;
     }
 
+    template<concepts::InvocableTo<bool, Value const&> F>
+    constexpr auto filter(F&& f) && -> Optional {
+        if (has_value() && di::invoke_r<bool>(di::forward<F>(f), di::as_const(*this).value())) {
+            return di::move(*this);
+        }
+        return {};
+    }
+
 private:
     constexpr friend void tag_invoke(types::Tag<util::swap>, Optional& a, Optional& b)
     requires(concepts::Swappable<T>)
