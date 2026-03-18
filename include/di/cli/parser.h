@@ -289,7 +289,7 @@ namespace detail {
 
             auto argument_index = usize(0);
             auto i = usize(0);
-            for (; i < positional_arguments.size(); argument_index++) {
+            for (; i < positional_arguments.size() && i < m_arguments.size(); argument_index++) {
                 auto count_to_consume = !argument_variadic(i) ? 1 : positional_arguments.size() - argument_count() + 1;
                 auto input = *positional_arguments.subspan(i, count_to_consume);
                 DI_TRY(argument_parse(argument_index, &result, input, use_colors));
