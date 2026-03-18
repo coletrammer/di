@@ -1,5 +1,6 @@
 #pragma once
 
+#include "di/reflect/clone_impl.h"
 #include "di/reflect/enum_to_string.h"
 #include "di/reflect/enumerator.h"
 #include "di/reflect/field.h"
