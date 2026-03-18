@@ -55,7 +55,7 @@ using Deserializer =
     decltype(serialization::deserializer(util::declval<T>(), util::declval<Reader>(), util::declval<Args>()...));
 
 template<typename S, typename T>
-using DeserializeResult = meta::LikeExpected<meta::ReaderResult<void, decltype(util::declval<S>().reader())>, T>;
+using DeserializeResult = meta::LikeExpected<typename meta::RemoveCVRef<S>::template Result<>, T>;
 }
 
 namespace di::serialization {

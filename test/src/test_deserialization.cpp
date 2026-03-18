@@ -4,6 +4,7 @@
 #include "di/serialization/binary_deserializer.h"
 #include "di/serialization/binary_serializer.h"
 #include "di/serialization/json_deserializer.h"
+#include "di/serialization/json_deserializer_error.h"
 #include "di/serialization/json_value.h"
 #include "di/test/prelude.h"
 #include "di/util/uuid.h"
@@ -112,6 +113,11 @@ constexpr static void json_escaped_string() {
     }
 }
 
+constexpr static void json_utf8_string() {
+    auto result = di::from_json_string<di::json::String>(u8R"("$¢€𐍈")"_sv);
+    ASSERT_EQ(result, u8"$¢€𐍈"_sv);
+}
+
 constexpr static void json_literal() {
     auto object = R"( {
     "hello" : 32 , "world" : [ "x" , null ]
@@ -183,22 +189,22 @@ struct MySuperType {
 
 constexpr static void json_reflect() {
     {
-        auto r = *di::from_json_string<MyEnum>(R"("Foo")"_sv);
+        auto r = di::from_json_string<MyEnum>(R"("Foo")"_sv);
         auto e = MyEnum::Foo;
         ASSERT_EQ(r, e);
     }
     {
-        auto r = *di::from_json_string<MyEnum>(R"("Bar")"_sv);
+        auto r = di::from_json_string<MyEnum>(R"("Bar")"_sv);
         auto e = MyEnum::Bar;
         ASSERT_EQ(r, e);
     }
     {
-        auto r = *di::from_json_string<MyEnum>(R"("Baz")"_sv);
+        auto r = di::from_json_string<MyEnum>(R"("Baz")"_sv);
         auto e = MyEnum::Baz;
         ASSERT_EQ(r, e);
     }
     {
-        auto r = *di::from_json_string<MyType>(R"({
+        auto r = di::from_json_string<MyType>(R"({
         "x": 1,
         "y": 2,
         "z": 3,
@@ -210,7 +216,7 @@ constexpr static void json_reflect() {
         ASSERT_EQ(r, e);
     }
     {
-        auto r = *di::from_json_string<MySuperType>(R"({
+        auto r = di::from_json_string<MySuperType>(R"({
         "my_type": {
             "x": 1,
             "y": 2,
@@ -286,6 +292,7 @@ constexpr static void binary() {
 
 TESTC(deserialization, json_value)
 TEST(deserialization, json_escaped_string)
+TEST(deserialization, json_utf8_string)
 TESTC_CLANG(deserialization, json_literal)
 TESTC_CLANG(deserialization, json_reflect)
 TESTC_CLANG(deserialization, binary)

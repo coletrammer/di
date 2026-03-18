@@ -5,6 +5,8 @@
 #include "di/container/string/fixed_string.h"
 #include "di/container/string/fixed_string_to_utf8_string_view.h"
 #include "di/container/string/string_view.h"
+#include "di/container/string/utf8_strict_stream_decoder.h"
+#include "di/format/format.h"
 #include "di/function/index_dispatch.h"
 #include "di/io/interface/reader.h"
 #include "di/io/prelude.h"
@@ -17,6 +19,7 @@
 #include "di/reflect/type_name.h"
 #include "di/serialization/deserialize.h"
 #include "di/serialization/deserialize_string.h"
+#include "di/serialization/json_deserializer_error.h"
 #include "di/serialization/json_serializer.h"
 #include "di/serialization/json_value.h"
 #include "di/types/in_place_type.h"
@@ -25,6 +28,7 @@
 #include "di/util/reference_wrapper.h"
 #include "di/util/to_underlying.h"
 #include "di/vocab/array/array.h"
+#include "di/vocab/error/prelude.h"
 #include "di/vocab/optional/nullopt.h"
 #include "di/vocab/optional/optional_forward_declaration.h"
 #include "di/vocab/pointer/box.h"
@@ -55,10 +59,21 @@ namespace detail {
 template<concepts::Impl<io::Reader> Reader>
 class JsonDeserializer {
 private:
-    template<typename T = void>
-    using Result = meta::ReaderResult<T, Reader>;
+    constexpr static auto add_path_to_error(json_deserializer::ErrorCode error, di::String path)
+        -> json_deserializer::ErrorCode {
+        auto& key = error.value().inner().key;
+        path.insert(path.begin(), U'.');
+        if (key != "."_sv) {
+            path.append(key);
+        }
+        key = di::move(path);
+        return error;
+    }
 
 public:
+    template<typename T = void>
+    using Result = Expected<T, json_deserializer::ErrorCode>;
+
     using DeserializationFormat = JsonFormat;
 
     template<typename T>
@@ -84,7 +99,8 @@ public:
             DI_TRY(skip_whitespace());
             auto code_point = DI_TRY(peek_next_code_point());
             if (!code_point) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
             }
             if (*code_point == U'}') {
                 break;
@@ -103,9 +119,16 @@ public:
                     if (key == container::fixed_string_to_utf8_string_view<field.name>()) {
                         using Value = meta::Type<decltype(field)>;
                         if constexpr (concepts::Optional<Value>) {
-                            field.get(result) = DI_TRY(serialization::deserialize<meta::OptionalValue<Value>>(*this));
+                            field.get(result) =
+                                DI_TRY(serialization::deserialize<meta::OptionalValue<Value>>(*this).transform_error(
+                                    [&](json_deserializer::ErrorCode error) {
+                                        return add_path_to_error(di::move(error), di::move(key));
+                                    }));
                         } else {
-                            field.get(result) = DI_TRY(serialization::deserialize<Value>(*this));
+                            field.get(result) = DI_TRY(serialization::deserialize<Value>(*this).transform_error(
+                                [&](json_deserializer::ErrorCode error) {
+                                    return add_path_to_error(di::move(error), di::move(key));
+                                }));
                         }
                         found = true;
                     }
@@ -113,7 +136,8 @@ public:
                 },
                 fields));
             if (!found) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedKeyError { di::move(key) }, "."_s));
             }
         }
 
@@ -140,7 +164,14 @@ public:
             enumerators);
 
         if (!found) {
-            return vocab::Unexpected(BasicError::InvalidArgument);
+            auto all_enums = di::Vector<di::String> {};
+            vocab::tuple_for_each(
+                [&](auto enumerator) {
+                    all_enums.push_back(container::fixed_string_to_utf8_string_view<enumerator.name>().to_owned());
+                },
+                enumerators);
+            return vocab::Unexpected(json_deserializer::Error(
+                json_deserializer::ParseEnumError { di::move(string), di::move(all_enums) }, "."_s));
         }
         return result;
     }
@@ -168,7 +199,10 @@ public:
     requires(M::is_custom_atom() && requires { di::parse<T>(di::StringView()); })
     {
         auto string = DI_TRY(deserialize_string());
-        auto result = DI_TRY(di::parse<T>(string.view()));
+        auto result = DI_TRY(di::parse<T>(string.view()).transform_error([&](di::Error error) {
+            return json_deserializer::Error(json_deserializer::ParseValueError(di::move(string), di::move(error)),
+                                            "."_s);
+        }));
         return result;
     }
 
@@ -181,23 +215,29 @@ public:
         DI_TRY(skip_whitespace());
         DI_TRY(expect('['));
 
-        auto first = true;
+        auto count = 0_usize;
         DI_TRY(vocab::tuple_sequence<Result<>>(
             [&]<typename Value>(Value& value) -> Result<> {
                 DI_TRY(skip_whitespace());
                 auto code_point = DI_TRY(peek_next_code_point());
                 if (!code_point) {
-                    return vocab::Unexpected(BasicError::InvalidArgument);
+                    return vocab::Unexpected(
+                        json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
                 }
                 // Indicates we've ran out of arguments
-                if (*code_point == U']') {
-                    return vocab::Unexpected(BasicError::InvalidArgument);
+                if (code_point == U']') {
+                    return vocab::Unexpected(json_deserializer::Error(
+                        json_deserializer::MissingArrayElementsError { count, meta::TupleSize<T> }, "."_s));
                 }
-                if (!util::exchange(first, false)) {
+                if (count++ > 0) {
                     DI_TRY(expect(U','));
                 }
 
-                value = DI_TRY(serialization::deserialize<Value>(*this));
+                value = DI_TRY(
+                    serialization::deserialize<Value>(*this).transform_error([&](json_deserializer::ErrorCode error) {
+                        auto path = di::format("[{}]"_sv, count);
+                        return add_path_to_error(di::move(error), di::move(path));
+                    }));
                 return {};
             },
             result));
@@ -225,13 +265,17 @@ public:
 
         auto it = di::find(possible_keys, key);
         if (it == possible_keys.end()) {
-            return di::Unexpected(di::BasicError::InvalidArgument);
+            return vocab::Unexpected(
+                json_deserializer::Error(json_deserializer::UnexpectedKeyError { di::move(key) }, "."_s));
         }
 
         auto result = TRY(function::index_dispatch<Result<T>, meta::Size<meta::VariantTypes<T>>>(
             usize(it - possible_keys.begin()), [&]<usize index>(Constexpr<index>) -> Result<T> {
                 using Value = meta::At<meta::VariantTypes<T>, index>;
-                return serialization::deserialize<Value>(*this);
+                return serialization::deserialize<Value>(*this).transform_error(
+                    [&](json_deserializer::ErrorCode error) {
+                        return add_path_to_error(di::move(error), di::move(key));
+                    });
             }));
 
         DI_TRY(skip_whitespace());
@@ -262,11 +306,12 @@ public:
         DI_TRY(skip_whitespace());
         DI_TRY(expect('['));
 
-        for (;;) {
+        for (auto i = usize(0);; i++) {
             DI_TRY(skip_whitespace());
             auto code_point = DI_TRY(peek_next_code_point());
             if (!code_point) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
             }
             if (*code_point == U']') {
                 break;
@@ -274,7 +319,11 @@ public:
             if (!result.empty()) {
                 DI_TRY(expect(U','));
             }
-            result.push_back(DI_TRY(serialization::deserialize<meta::ContainerValue<T>>(*this)));
+            result.push_back(DI_TRY(serialization::deserialize<meta::ContainerValue<T>>(*this).transform_error(
+                [&](json_deserializer::ErrorCode error) {
+                    auto key = di::format("[{}]"_sv, i);
+                    return add_path_to_error(di::move(error), di::move(key));
+                })));
         }
 
         DI_TRY(expect(']'));
@@ -295,7 +344,8 @@ public:
             DI_TRY(skip_whitespace());
             auto code_point = DI_TRY(peek_next_code_point());
             if (!code_point) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
             }
             if (*code_point == U'}') {
                 break;
@@ -307,7 +357,11 @@ public:
             DI_TRY(skip_whitespace());
             DI_TRY(expect(U':'));
             DI_TRY(skip_whitespace());
-            auto value = DI_TRY(serialization::deserialize<meta::TupleElement<meta::ContainerValue<T>, 1>>(*this));
+            auto value = DI_TRY(
+                serialization::deserialize<meta::TupleElement<meta::ContainerValue<T>, 1>>(*this).transform_error(
+                    [&](json_deserializer::ErrorCode error) {
+                        return add_path_to_error(di::move(error), di::move(key));
+                    }));
             result.insert_or_assign(util::move(key), util::move(value));
         }
 
@@ -332,21 +386,35 @@ private:
     }
 
     constexpr auto expect(c32 expected) -> Result<void> {
-        auto code_point = DI_TRY(next_code_point());
-        if (!code_point || *code_point != expected) {
-            return vocab::Unexpected(BasicError::InvalidArgument);
+        auto code_point = DI_TRY(require_next_code_point());
+        if (code_point != expected) {
+            return vocab::Unexpected(
+                json_deserializer::Error(json_deserializer::UnexpectedCharacterError { code_point, expected }, "."_s));
         }
         return {};
     }
 
     constexpr auto fill_next_code_point() -> Result<void> {
-        // FIXME: handle UTF-8.
-        auto byte = vocab::Array<types::byte, 1> {};
-        auto nread = DI_TRY(io::read_some(m_reader, byte));
-        if (nread == 0) {
-            m_at_end = true;
+        for (;;) {
+            auto byte = vocab::Array<types::byte, 1> {};
+            auto nread = DI_TRY(io::read_some(m_reader, byte).transform_error([](di::Error error) {
+                return json_deserializer::Error(json_deserializer::ReadError(di::move(error)), "."_s);
+            }));
+            if (nread == 0) {
+                m_at_end = true;
+                DI_TRY(m_utf8_decoder.flush().transform_error([](auto) {
+                    return json_deserializer::Error(json_deserializer::InvalidUtf8Error {}, "."_s);
+                }));
+                return {};
+            }
+            auto maybe_code_point = DI_TRY(m_utf8_decoder.decode(byte[0]).transform_error([](auto) {
+                return json_deserializer::Error(json_deserializer::InvalidUtf8Error {}, "."_s);
+            }));
+            if (maybe_code_point) {
+                m_next_code_point = maybe_code_point.value();
+                break;
+            }
         }
-        m_next_code_point = c32(byte[0]);
         return {};
     }
 
@@ -381,7 +449,7 @@ private:
     constexpr auto require_next_code_point() -> Result<c32> {
         auto code_point = DI_TRY(next_code_point());
         if (!code_point) {
-            return vocab::Unexpected(BasicError::InvalidArgument);
+            return vocab::Unexpected(json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
         }
         return *code_point;
     }
@@ -401,7 +469,7 @@ private:
 
         auto code_point = DI_TRY(peek_next_code_point());
         if (!code_point) {
-            return vocab::Unexpected(BasicError::InvalidArgument);
+            return vocab::Unexpected(json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
         }
 
         switch (*code_point) {
@@ -430,7 +498,8 @@ private:
             case U'[':
                 return deserialize_array();
             default:
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedCharacterError { *code_point }, "."_s));
         }
     }
 
@@ -461,7 +530,7 @@ private:
                 DI_TRY(expect(U'e'));
                 return false;
             default:
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(json_deserializer::Error(json_deserializer::ParseBoolError {}, "."_s));
         }
     }
 
@@ -494,7 +563,8 @@ private:
         if (('a'_m - 'f'_m)(code_point)) {
             return u16(10u + (code_point - 'a'));
         }
-        return vocab::Unexpected(BasicError::InvalidArgument);
+        return vocab::Unexpected(
+            json_deserializer::Error(json_deserializer::UnexpectedCharacterError { code_point }, "."_s));
     }
 
     constexpr auto parse_four_hex_digits() -> Result<u16> {
@@ -515,9 +585,10 @@ private:
 
         auto string = json::String {};
         for (;;) {
-            auto code_point = DI_TRY(next_code_point());
-            if (!code_point || *code_point < 0x20) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+            auto code_point = DI_TRY(require_next_code_point());
+            if (code_point < 0x20) {
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedCharacterError { code_point }, "."_s));
             }
             if (code_point == U'\\') {
                 auto escaped = DI_TRY(require_next_code_point());
@@ -556,7 +627,8 @@ private:
                             DI_TRY(expect(U'u'));
                             auto low_code_point = DI_TRY(parse_four_hex_digits());
                             if (!is_low_surrogate(low_code_point)) {
-                                return vocab::Unexpected(BasicError::InvalidArgument);
+                                return vocab::Unexpected(json_deserializer::Error(
+                                    json_deserializer::UnexpectedCharacterError { code_point }, "."_s));
                             }
                             auto actual_code_point =
                                 c32((code_point - 0xD800u) << 10) + c32(low_code_point - 0xDC00u) + c32(0x10000);
@@ -564,20 +636,22 @@ private:
                             continue;
                         }
                         if (is_low_surrogate(code_point)) {
-                            return vocab::Unexpected(BasicError::InvalidArgument);
+                            return vocab::Unexpected(json_deserializer::Error(
+                                json_deserializer::UnexpectedCharacterError { code_point }, "."_s));
                         }
                         string.push_back(c32(code_point));
                         continue;
                     }
                     default:
-                        return vocab::Unexpected(BasicError::InvalidArgument);
+                        return vocab::Unexpected(json_deserializer::Error(
+                            json_deserializer::UnexpectedCharacterError { code_point }, "."_s));
                 }
             }
 
-            if (*code_point == U'"') {
+            if (code_point == U'"') {
                 break;
             }
-            string.push_back(*code_point);
+            string.push_back(code_point);
         }
         return string;
     }
@@ -592,7 +666,8 @@ private:
             string.push_back(first_code_point);
             first_code_point = DI_TRY(require_next_code_point());
             if (first_code_point < U'0' || first_code_point > U'9') {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedCharacterError { first_code_point }, "."_s));
             }
         }
         if (first_code_point == U'0') {
@@ -618,7 +693,8 @@ private:
         // FIXME: handle decimal point and exponent for floating point numbers.
         auto result = parser::parse<T>(string);
         if (!result) {
-            return vocab::Unexpected(BasicError::InvalidArgument);
+            return vocab::Unexpected(
+                json_deserializer::Error(json_deserializer::ParseNumberError { di::move(string) }, "."_s));
         }
         return *result;
     }
@@ -632,7 +708,8 @@ private:
             DI_TRY(skip_whitespace());
             auto code_point = DI_TRY(peek_next_code_point());
             if (!code_point) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
             }
             if (*code_point == U']') {
                 break;
@@ -656,7 +733,8 @@ private:
             DI_TRY(skip_whitespace());
             auto code_point = DI_TRY(peek_next_code_point());
             if (!code_point) {
-                return vocab::Unexpected(BasicError::InvalidArgument);
+                return vocab::Unexpected(
+                    json_deserializer::Error(json_deserializer::UnexpectedEndOfInputError {}, "."_s));
             }
             if (*code_point == U'}') {
                 break;
@@ -678,6 +756,7 @@ private:
 
     Reader m_reader;
     vocab::Optional<c32> m_next_code_point;
+    Utf8StrictStreamDecoder m_utf8_decoder;
     bool m_at_end { false };
 };
 

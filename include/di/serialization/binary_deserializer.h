@@ -43,11 +43,10 @@ namespace di::serialization {
 /// @see BinarySerializer
 template<Impl<io::Reader> Reader>
 class BinaryDeserializer {
-private:
-    template<typename T>
+public:
+    template<typename T = void>
     using Result = meta::ReaderResult<T, Reader>;
 
-public:
     using DeserializationFormat = BinaryFormat;
 
     template<concepts::NotDecaysTo<BinaryDeserializer> T>
