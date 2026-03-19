@@ -15,7 +15,7 @@ namespace detail {
         consteval auto operator()() const {
             return function::unpack<meta::MakeIndexSequence<literal.size()>>(
                 []<usize... indices>(meta::ListV<indices...>) {
-                    if constexpr (literal.size() == 0) {
+                    if constexpr (literal.empty()) {
                         return string::StringViewImpl<string::Utf8Encoding> {};
                     } else {
                         auto span = Span { as_c8_buffer<literal, indices...> };

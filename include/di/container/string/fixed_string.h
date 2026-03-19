@@ -23,6 +23,8 @@ public:
     constexpr auto data() const -> char const* { return m_data; }
     constexpr static auto size() { return count; }
 
+    constexpr auto empty() const { return size() == 0; }
+
     constexpr auto begin() const -> char const* { return m_data; }
     constexpr auto end() const -> char const* { return m_data + count; }
 

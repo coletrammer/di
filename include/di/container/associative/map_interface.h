@@ -361,8 +361,8 @@ public:
         }
     }
 
-    constexpr auto merge(Self& self) { return self().merge_impl(util::move(self)); }
-    constexpr auto merge(Self&& self) { return self().merge_impl(util::move(self)); }
+    constexpr auto merge(Self& other) { return self().merge_impl(util::move(other)); }
+    constexpr auto merge(Self&& other) { return self().merge_impl(util::move(other)); }
 
     constexpr auto erase(Iterator position) { return self().erase_impl(util::move(position)); }
 

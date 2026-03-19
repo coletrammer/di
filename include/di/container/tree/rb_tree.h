@@ -191,9 +191,10 @@ public:
             auto save = it++;
 
             auto position = insert_position(*save);
-            if (!is_multi && position.parent && compare(position.parent->value, *save) == 0) {
-                erase_impl(save);
+            if (!is_multi && position.parent && compare(node_value(*position.parent), *save) == 0) {
+                it = other.erase_impl(save);
             } else {
+                other.erase_node(save.node());
                 do_insert_node(position, save.node());
             }
         }
