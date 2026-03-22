@@ -52,6 +52,10 @@ public:
 
     constexpr void emplace() { m_has_value = true; }
 
+    constexpr auto __try_did_fail() && -> NullOpt { return nullopt; }
+    constexpr auto __try_did_succeed() && -> Optional { return Optional { in_place }; }
+    constexpr void __try_move_out() && {}
+
 private:
     constexpr friend auto operator==(Optional const& a, Optional const& b) -> bool {
         return a.has_value() == b.has_value();

@@ -311,6 +311,10 @@ public:
         return {};
     }
 
+    constexpr auto __try_did_fail() && -> NullOpt { return nullopt; }
+    constexpr auto __try_did_succeed() && -> Optional { return Optional { in_place, util::move(*this).value() }; }
+    constexpr auto __try_move_out() && -> T&& { return util::move(*this).value(); }
+
 private:
     constexpr friend void tag_invoke(types::Tag<util::swap>, Optional& a, Optional& b)
     requires(concepts::Swappable<T>)
