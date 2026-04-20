@@ -5,6 +5,7 @@
 namespace di {
 using platform::BasicError;
 using platform::DefaultAllocator;
+using platform::DefaultConditionVariable;
 using platform::DefaultFallibleAllocator;
 using platform::DefaultLock;
 using platform::GenericDomain;

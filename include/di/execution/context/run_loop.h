@@ -12,6 +12,7 @@
 #include "di/platform/prelude.h"
 #include "di/sync/dumb_spinlock.h"
 #include "di/sync/synchronized.h"
+#include "di/sync/unique_lock.h"
 #include "di/util/immovable.h"
 
 namespace di::execution {
@@ -107,43 +108,38 @@ public:
     }
 
     void finish() {
-        m_state.with_lock([](State& state) {
-            state.stopped = true;
-        });
+        auto _ = UniqueLock(m_lock);
+        m_state.stopped = true;
+        m_cv.notify_one();
     }
 
 private:
     auto pop_front() -> OperationStateBase* {
-        // FIXME: block instead of busy polling the queue when it is empty.
+        auto guard = UniqueLock(m_lock);
         for (;;) {
-            auto [operation, is_stopped] = m_state.with_lock([](State& state) -> Tuple<OperationStateBase*, bool> {
-                // NOTE: even if a stop is requested, we must continue first empty the queue
-                //       before returning stopping execution. Otherwise, the receiver contract
-                //       will be violated (operation state will be destroyed without completion
-                //       ever occuring).
-                if (!state.queue.empty()) {
-                    return make_tuple(util::addressof(*state.queue.pop()), false);
-                }
-                if (state.stopped) {
-                    return make_tuple(nullptr, true);
-                }
-                return make_tuple(nullptr, false);
-            });
-
-            if (is_stopped) {
+            // NOTE: even if a stop is requested, we must continue first empty the queue
+            //       before returning stopping execution. Otherwise, the receiver contract
+            //       will be violated (operation state will be destroyed without completion
+            //       ever occuring).
+            if (!m_state.queue.empty()) {
+                return util::addressof(*m_state.queue.pop());
+            }
+            if (m_state.stopped) {
                 return nullptr;
             }
-            return operation;
+            m_cv.wait(guard);
         }
     }
 
     void push_back(OperationStateBase* operation) {
-        m_state.with_lock([&](State& state) {
-            state.queue.push(*operation);
-        });
+        auto _ = UniqueLock(m_lock);
+        m_state.queue.push(*operation);
+        m_cv.notify_one();
     }
 
-    sync::Synchronized<State, Lock> m_state;
+    State m_state;
+    DefaultLock m_lock;
+    DefaultConditionVariable m_cv;
 };
 }
 
