@@ -1,7 +1,7 @@
 #pragma once
 
+#include "di/execution/algorithm/continues_on.h"
 #include "di/execution/algorithm/just.h"
-#include "di/execution/algorithm/transfer.h"
 #include "di/execution/concepts/sender.h"
 #include "di/meta/util.h"
 
@@ -13,8 +13,8 @@ namespace transfer_just_ns {
             if constexpr (concepts::TagInvocable<Function, Sched, Values...>) {
                 return function::tag_invoke(*this, util::forward<Sched>(scheduler), util::forward<Values>(values)...);
             } else {
-                return execution::transfer(execution::just(util::forward<Values>(values)...),
-                                           util::forward<Sched>(scheduler));
+                return execution::continues_on(execution::just(util::forward<Values>(values)...),
+                                               util::forward<Sched>(scheduler));
             }
         }
     };

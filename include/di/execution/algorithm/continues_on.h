@@ -8,7 +8,7 @@
 #include "di/function/curry_back.h"
 
 namespace di::execution {
-namespace transfer_ns {
+namespace continues_on_ns {
     struct Function {
         template<concepts::Scheduler Sched, concepts::Sender Send>
         auto operator()(Send&& sender, Sched&& scheduler) const -> concepts::Sender auto {
@@ -27,5 +27,5 @@ namespace transfer_ns {
     };
 }
 
-constexpr inline auto transfer = function::curry_back(transfer_ns::Function {}, meta::c_<2ZU>);
+constexpr inline auto continues_on = function::curry_back(continues_on_ns::Function {}, meta::c_<2ZU>);
 }

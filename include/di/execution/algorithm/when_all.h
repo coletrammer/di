@@ -1,7 +1,7 @@
 #pragma once
 
+#include "di/execution/algorithm/continues_on.h"
 #include "di/execution/algorithm/into_variant.h"
-#include "di/execution/algorithm/transfer.h"
 #include "di/execution/concepts/forwarding_query.h"
 #include "di/execution/concepts/receiver.h"
 #include "di/execution/concepts/receiver_of.h"
@@ -368,7 +368,8 @@ namespace when_all_ns {
             if constexpr (concepts::TagInvocable<TransferFunction, Sched, Senders...>) {
                 return function::tag_invoke(*this, util::forward<Sched>(sched), util::forward<Senders>(senders)...);
             } else {
-                return execution::transfer(Function {}(util::forward<Sender>(senders)...), util::forward<Sched>(sched));
+                return execution::continues_on(Function {}(util::forward<Sender>(senders)...),
+                                               util::forward<Sched>(sched));
             }
         }
     };

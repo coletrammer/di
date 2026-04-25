@@ -17,10 +17,10 @@
 #include "di/execution/algorithm/just_or_error.h"
 #include "di/execution/algorithm/just_void_or_stopped.h"
 #include "di/execution/algorithm/let_value_with.h"
-#include "di/execution/algorithm/on.h"
 #include "di/execution/algorithm/prelude.h"
 #include "di/execution/algorithm/split.h"
 #include "di/execution/algorithm/start_detached.h"
+#include "di/execution/algorithm/starts_on.h"
 #include "di/execution/algorithm/sync_wait.h"
 #include "di/execution/algorithm/then.h"
 #include "di/execution/algorithm/transfer_just.h"
@@ -242,12 +242,12 @@ static void inline_scheduler() {
                     return 42;
                 });
 
-    auto w2 = ex::on(scheduler, ex::just(42));
+    auto w2 = ex::starts_on(scheduler, ex::just(42));
 
     ASSERT_EQ(ex::sync_wait(work), 42);
     ASSERT_EQ(ex::sync_wait(di::move(w2)), 42);
 
-    auto v = ex::on(scheduler, ex::get_scheduler());
+    auto v = ex::starts_on(scheduler, ex::get_scheduler());
     ASSERT_EQ(*ex::sync_wait(v), scheduler);
 }
 
@@ -315,7 +315,7 @@ static void let() {
     //! [let_value_with]
 }
 
-static void transfer() {
+static void continues_on() {
     namespace ex = di::execution;
 
     auto scheduler = di::InlineScheduler {};
@@ -584,9 +584,10 @@ static void counting_scope() {
         [&](auto scope) {
             return execution::get_scheduler() | execution::let_value([scope](auto scheduler) {
                        return execution::when_all(
-                                  execution::spawn_future(scope, execution::on(scheduler, execution::just(11))),
-                                  execution::spawn_future(scope, execution::on(scheduler, execution::just(22))),
-                                  execution::spawn_future(scope, execution::on(scheduler, execution::just(33)))) |
+                                  execution::spawn_future(scope, execution::starts_on(scheduler, execution::just(11))),
+                                  execution::spawn_future(scope, execution::starts_on(scheduler, execution::just(22))),
+                                  execution::spawn_future(scope,
+                                                          execution::starts_on(scheduler, execution::just(33)))) |
                               execution::then([](auto... values) {
                                   return (values + ...);
                               });
@@ -632,7 +633,7 @@ static void ensure_started() {
               di::Unexpected(di::BasicError::NotEnoughMemory));
 
     auto spawn_work = execution::get_scheduler() | execution::let_value([](auto scheduler) {
-                          return execution::ensure_started(execution::on(scheduler, execution::just(42)));
+                          return execution::ensure_started(execution::starts_on(scheduler, execution::just(42)));
                       });
     ASSERT_EQ(execution::sync_wait(spawn_work), 42);
 }
@@ -699,19 +700,19 @@ static void split() {
     ASSERT_EQ(execution::sync_wait(do_sender()), 42);
     ASSERT_EQ(execution::sync_wait(do_sender()), 42);
 
-    auto delayed_sender = execution::get_scheduler() | execution::let_value([](auto scheduler) {
-                              auto work =
-                                  execution::on(scheduler, execution::just(NoncopyableI32(42))) | execution::split;
-                              return execution::when_all(work | execution::then([](NoncopyableI32 const& x) {
-                                                             return x.x;
-                                                         }),
-                                                         work | execution::then([](NoncopyableI32 const& x) {
-                                                             return x.x;
-                                                         }),
-                                                         work | execution::then([](NoncopyableI32 const& x) {
-                                                             return x.x;
-                                                         }));
-                          });
+    auto delayed_sender =
+        execution::get_scheduler() | execution::let_value([](auto scheduler) {
+            auto work = execution::starts_on(scheduler, execution::just(NoncopyableI32(42))) | execution::split;
+            return execution::when_all(work | execution::then([](NoncopyableI32 const& x) {
+                                           return x.x;
+                                       }),
+                                       work | execution::then([](NoncopyableI32 const& x) {
+                                           return x.x;
+                                       }),
+                                       work | execution::then([](NoncopyableI32 const& x) {
+                                           return x.x;
+                                       }));
+        });
 
     ASSERT_EQ(execution::sync_wait(delayed_sender), di::make_tuple(42, 42, 42));
 
@@ -727,7 +728,7 @@ TEST(execution, coroutine)
 TEST(execution, then)
 TEST(execution, inline_scheduler)
 TEST(execution, let)
-TEST(execution, transfer)
+TEST(execution, continues_on)
 TEST(execution, as)
 TEST(execution, use_resources)
 TEST(execution, any_sender)

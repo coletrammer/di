@@ -15,7 +15,7 @@
 #include "di/util/defer_construct.h"
 
 namespace di::execution {
-namespace on_ns {
+namespace starts_on_ns {
     template<typename Send, typename Rec, typename Sched>
     struct OperationStateT {
         struct Type;
@@ -157,12 +157,12 @@ namespace on_ns {
     };
 }
 
-/// execution::on() takes a scheduler and sender, and returns a new sender
+/// execution::starts_on() takes a scheduler and sender, and returns a new sender
 /// whose which "runs" the provided sender on designated scheduler.
 ///
 /// This is implemented by "connect"ing to the result of execution::schedule(),
 /// and only starting the provided sender when that completes. Additionally,
-/// execution::on() wraps any provided receivers with a new enviornment which
+/// execution::starts_on() wraps any provided receivers with a new enviornment which
 /// adverties the scheduler for execution::get_scheduler().
-constexpr inline auto on = on_ns::Function {};
+constexpr inline auto starts_on = starts_on_ns::Function {};
 }
