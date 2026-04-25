@@ -19,6 +19,7 @@ public:
         , m_callback(util::forward<C>(callback)) {
         if (m_parent) {
             if (!m_parent->try_add_callback(this)) {
+                m_already_executed.store(true, MemoryOrder::Relaxed);
                 function::invoke(util::move(m_callback));
             }
         }

@@ -1,11 +1,10 @@
 #pragma once
 
-#include "di/container/intrusive/prelude.h"
+#include "di/container/intrusive/list.h"
 #include "di/platform/prelude.h"
 #include "di/sync/atomic.h"
 #include "di/sync/stop_token/forward_declaration.h"
 #include "di/sync/stop_token/in_place_stop_callback_base.h"
-#include "di/sync/synchronized.h"
 
 namespace di::sync {
 class InPlaceStopSource {
@@ -35,7 +34,7 @@ public:
         }
 
         // Remember the thread id which requested the stop.
-        m_stopper_thread = get_current_thread_id();
+        m_stopper_thread = platform::get_current_thread_id();
 
         // With the lock now aquired, iterate through each stop callback.
         while (!m_callbacks.empty()) {
@@ -82,16 +81,15 @@ private:
     }
 
     void remove_callback(detail::InPlaceStopCallbackBase* callback) const {
-        // Simple case: no stop request has happened.
-        if (lock_unless_stopped(false)) {
-            m_callbacks.erase(*callback);
+        // Begin by locking and determining if we have been stopped.
+        auto stopped = lock_and_return_stopped();
 
+        // Simple case: no stop request has happened.
+        if (!stopped) {
+            m_callbacks.erase(*callback);
             unlock(false);
             return;
         }
-
-        // If a stop request occurred, synchronize on the spin lock.
-        lock(true);
 
         auto stopper_thread = m_stopper_thread;
         auto* did_destruct_in_same_thread = callback->m_did_destruct_in_same_thread.load(MemoryOrder::Relaxed);
@@ -108,7 +106,7 @@ private:
         if (going_to_be_executed) {
             // If we are being executed by the current thread, notify the callback runner this object
             // has been destroyed. This is not synchronized because we must running on the same thread.
-            if (stopper_thread == get_current_thread_id()) {
+            if (stopper_thread == platform::get_current_thread_id()) {
                 *did_destruct_in_same_thread = true;
             } else {
                 // Otherwise, wait for the callback's execution to complete before finishing.
@@ -129,6 +127,7 @@ private:
                 return false;
             }
 
+            expected &= ~locked_flag;
             if (m_state.compare_exchange_weak(expected, flags, MemoryOrder::AcquireRelease, MemoryOrder::Relaxed)) {
                 // Lock aquired, return true.
                 return true;
@@ -136,10 +135,19 @@ private:
         }
     }
 
+    auto lock_and_return_stopped() const -> bool {
+        u8 flags = m_state.load(MemoryOrder::Relaxed) & ~locked_flag;
+        while (!m_state.compare_exchange_weak(flags, flags | locked_flag, MemoryOrder::AcquireRelease,
+                                              MemoryOrder::Relaxed)) {
+            flags &= ~locked_flag;
+        }
+        return !!(flags & stop_flag);
+    }
+
     void lock(bool set_stop) const {
         u8 flags = set_stop ? (stop_flag | locked_flag) : locked_flag;
-        while (!m_state.exchange(flags, MemoryOrder::Acquire)) {
-            ;
+        while (!!(m_state.exchange(flags, MemoryOrder::Acquire) & locked_flag)) {
+            flags &= ~locked_flag;
         }
     }
 
@@ -150,6 +158,6 @@ private:
 
     mutable container::IntrusiveList<detail::InPlaceStopCallbackBase> m_callbacks;
     mutable Atomic<u8> m_state { 0 };
-    ThreadId m_stopper_thread;
+    platform::ThreadId m_stopper_thread;
 };
 }

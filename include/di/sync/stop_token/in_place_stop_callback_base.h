@@ -1,6 +1,6 @@
 #pragma once
 
-#include "di/container/intrusive/prelude.h"
+#include "di/container/intrusive/list.h"
 #include "di/sync/atomic.h"
 #include "di/sync/stop_token/forward_declaration.h"
 
