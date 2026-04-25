@@ -15,6 +15,8 @@ public:
     constexpr auto operator*() const -> T& { return *m_value; }
     constexpr auto operator->() const -> T* { return m_value; }
 
+    constexpr auto get() const -> T& { return **this; }
+
 private:
     Guard m_guard;
     T* m_value;

@@ -104,19 +104,22 @@ namespace counting_scope_ns {
         private:
             template<typename... Vs>
             auto set_value(Vs&&... values) && {
-                m_data->data->complete_one();
+                auto& data = *m_data->data;
                 execution::set_value(util::move(*this).base(), util::forward<Vs>(values)...);
+                data.complete_one();
             }
 
             template<typename E>
             auto set_error(E&& error) && {
-                m_data->data->complete_one();
+                auto& data = *m_data->data;
                 execution::set_error(util::move(*this).base(), util::forward<E>(error));
+                data.complete_one();
             }
 
             auto set_stopped() && {
-                m_data->data->complete_one();
+                auto& data = *m_data->data;
                 execution::set_stopped(util::move(*this).base());
+                data.complete_one();
             }
 
             auto get_env() const& { return m_data->data->get_env(execution::get_env(base())); }

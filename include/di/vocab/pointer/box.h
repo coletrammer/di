@@ -155,7 +155,7 @@ namespace detail {
             if constexpr (concepts::FallibleAllocator<platform::DefaultAllocator>) {
                 auto* result = ::new (std::nothrow) T(util::forward<Args>(args)...);
                 if (!result) {
-                    return vocab::Unexpected(BasicError::NotEnoughMemory);
+                    return vocab::Unexpected(platform::BasicError::NotEnoughMemory);
                 }
                 return Box<T>(result);
             } else {

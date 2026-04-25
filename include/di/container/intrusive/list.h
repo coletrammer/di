@@ -1,5 +1,6 @@
 #pragma once
 
+#include "di/assert/assert_bool.h"
 #include "di/container/algorithm/compare.h"
 #include "di/container/algorithm/equal.h"
 #include "di/container/interface/erase.h"
@@ -154,7 +155,9 @@ public:
     constexpr auto insert(ConstIterator position, Node& node_ref) -> Iterator {
         auto* node = util::addressof(node_ref);
         auto* next = position.base().node();
+        DI_ASSERT(next != nullptr);
         auto* prev = next->prev;
+        DI_ASSERT(prev != nullptr);
 
         node->next = next;
         node->prev = prev;
@@ -178,7 +181,9 @@ public:
         }
 
         auto* prev = first.base().node()->prev;
+        DI_ASSERT(prev != nullptr);
         auto* end = last.base().node();
+        DI_ASSERT(end != nullptr);
         prev->next = end;
         end->prev = prev;
 
