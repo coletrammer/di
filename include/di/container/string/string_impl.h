@@ -52,6 +52,10 @@ private:
     template<concepts::SameAs<types::Tag<into_erased_string>> T, concepts::SameAs<StringImpl> S>
     requires(concepts::SameAs<Enc, Utf8Encoding>)
     constexpr friend auto tag_invoke(T, S self) -> ErasedString {
+        if (self.size_code_units() <= ErasedString::inline_capacity) {
+            return ErasedString::create_inline(self.span());
+        }
+
         auto result = ErasedString(
             { self.data(), self.size_code_units() + 1 }, (void*) self.data(), (void*) self.m_vector.capacity(), nullptr,
             [](ErasedString* dest, ErasedString* src, ErasedString::ThunkOp op) {

@@ -37,7 +37,7 @@ public:
 
     PathImpl() = default;
 
-    constexpr PathImpl(Str&& string) : m_data(util::move(string)) { this->compute_first_component_end(); }
+    constexpr PathImpl(Str&& string) : m_data(util::move(string)) {}
 
     constexpr auto data() const { return m_data.view(); }
 

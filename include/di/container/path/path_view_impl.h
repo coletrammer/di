@@ -31,7 +31,7 @@ public:
 
     PathViewImpl() = default;
 
-    constexpr PathViewImpl(View view) : m_view(view) { this->compute_first_component_end(); }
+    constexpr PathViewImpl(View view) : m_view(view) {}
 
     constexpr PathViewImpl(Iterator start, Iterator end)
         : PathViewImpl(View(encoding::assume_valid, start.current_data(), end.current_data())) {}

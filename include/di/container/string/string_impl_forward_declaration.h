@@ -1,10 +1,10 @@
 #pragma once
 
-#include "di/container/vector/mutable_vector.h"
-#include "di/container/vector/vector.h"
+#include "di/container/string/string_hybrid_storage.h"
+#include "di/meta/language.h"
 
 namespace di::container::string {
-template<concepts::Encoding Enc, concepts::detail::MutableVector Vec = Vector<meta::EncodingCodeUnit<Enc>>>
+template<concepts::Encoding Enc, concepts::detail::MutableVector Vec = HybridStorage<meta::EncodingCodeUnit<Enc>>>
 requires(concepts::SameAs<meta::detail::VectorValue<Vec>, meta::EncodingCodeUnit<Enc>>)
 class StringImpl;
 }

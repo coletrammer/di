@@ -43,7 +43,7 @@ public:
         };
     }
 
-    constexpr auto begin() const { return PathIterator(data(), { data().begin(), m_first_component_end }); }
+    constexpr auto begin() const { return PathIterator(data(), { data().begin(), compute_first_component_end() }); }
     constexpr auto end() const { return PathIterator(data(), { data().end(), data().end() }); }
 
     constexpr auto is_absolute() const -> bool { return data().starts_with(CodePoint('/')); }
@@ -103,16 +103,14 @@ public:
         return PathView(View(a.current_data(), this->end().current_data()));
     }
 
-protected:
-    constexpr void compute_first_component_end() {
+private:
+    constexpr auto compute_first_component_end() const {
         if (data().starts_with(CodePoint('/'))) {
-            m_first_component_end = container::next(data().begin());
-        } else {
-            m_first_component_end = container::find(data(), CodePoint('/'));
+            return container::next(data().begin());
         }
+        return container::find(data(), CodePoint('/'));
     }
 
-private:
     constexpr friend auto operator==(Self const& a, Self const& b) -> bool { return container::equal(a, b); }
     constexpr friend auto operator<=>(Self const& a, Self const& b) { return container::compare(a, b); }
 
@@ -141,7 +139,5 @@ private:
         }
         return view;
     }
-
-    ViewIter m_first_component_end {};
 };
 }
