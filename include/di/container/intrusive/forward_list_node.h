@@ -13,6 +13,8 @@ public:
 private:
     template<typename, typename, typename>
     friend class IntrusiveForwardList;
+    template<typename, typename, typename>
+    friend class IntrusiveAtomicBatchQueue;
 
     constexpr IntrusiveForwardListNode(IntrusiveForwardListNode* next_) : next(next_) {}
 
