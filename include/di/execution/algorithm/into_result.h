@@ -77,8 +77,8 @@ namespace into_result_ns {
             }
 
             void set_value() &&
-                requires(concepts::LanguageVoid<Result>) {
-                    execution::set_value(util::move(*this).base(), vocab::Result<Result>());
+                requires(concepts::LanguageVoid<meta::ExpectedValue<Result>>) {
+                    execution::set_value(util::move(*this).base(), Result(in_place));
                 }
 
                 void set_error(vocab::Error error) && {
