@@ -8,30 +8,30 @@
 #include "di/meta/callable.h"
 #include "di/types/integers.h"
 #include "di/types/prelude.h"
-#include "di/vocab/span/prelude.h"
+#include "di/util/reference_wrapper.h"
 
 namespace di::execution {
-namespace async_read_some_ns {
+namespace write_some_ns {
     struct Function {
         template<typename File>
-        requires(concepts::TagInvocable<Function, File, Span<Byte>, Optional<u64>>)
-        auto operator()(File&& handle, Span<Byte> buffer, Optional<u64> offset = {}) const
+        requires(concepts::TagInvocable<Function, File, Span<Byte const>, Optional<u64>>)
+        auto operator()(File&& handle, Span<Byte const> buffer, Optional<u64> offset = {}) const
             -> concepts::SenderOf<SetValue(usize)> auto {
             return function::tag_invoke(*this, util::forward<File>(handle), buffer, offset);
         }
 
         template<typename File>
-        requires(concepts::TagInvocable<Function, File&, Span<Byte>, Optional<u64>>)
-        auto operator()(util::ReferenceWrapper<File> handle, Span<Byte> buffer, Optional<u64> offset = {}) const {
+        requires(concepts::TagInvocable<Function, File&, Span<Byte const>, Optional<u64>>)
+        auto operator()(util::ReferenceWrapper<File> handle, Span<Byte const> buffer, Optional<u64> offset = {}) const {
             return function::tag_invoke(*this, handle.get(), buffer, offset);
         }
     };
 }
 
-constexpr inline auto async_read_some = async_read_some_ns::Function {};
+constexpr inline auto write_some = write_some_ns::Function {};
 }
 
 namespace di::concepts {
 template<typename T>
-concept AsyncReadable = concepts::Callable<execution::async_read_some_ns::Function, T&, vocab::Span<byte>>;
+concept AsyncWritable = concepts::Callable<execution::write_some_ns::Function, T&, vocab::Span<byte const>>;
 }

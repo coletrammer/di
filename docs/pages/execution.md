@@ -216,9 +216,11 @@ proposal. The following code example shows a correct use of the async resource m
 
 ```cpp
 auto my_sender() {
-    return di::execution::use_resources([](auto thread_pool_token) {
-        return di::execution::on(thread_pool.get_scheduler(), do_some_work);
-    }, di::make_deferred<di::ThreadPool>(4));
+    return di::execution::use_resources(
+        [](auto thread_pool_token) {
+            return di::execution::on(thread_pool.get_scheduler(), do_some_work);
+        },
+        di::make_deferred<di::ThreadPool>(4));
 }
 ```
 
@@ -235,12 +237,11 @@ is essentially as follows:
 
 ```cpp
 auto use_resources(auto invocable, auto&&... deferred_resources) {
-    return execution::let_value_with([invocable](auto& resources) {
-        return execution::first_value(
-            execution::zip(execution::run(resources)...)
-                | let_value_each(invocable)
-        );
-    }, deferred_resources...);
+    return execution::let_value_with(
+        [invocable](auto& resources) {
+            return execution::first_value(execution::zip(execution::run(resources)...) | let_value_each(invocable));
+        },
+        deferred_resources...);
 }
 ```
 
@@ -387,9 +388,7 @@ requirements.
 
 ```cpp
 // This is a type erased sender that can hold any sender that can complete with exactly an i32.
-using MySender = di::AnySender<
-    di::CompletionSignatures<di::SetValue(i32)>
->;
+using MySender = di::AnySender<di::CompletionSignatures<di::SetValue(i32)>>;
 
 auto x = MySender(di::just(5));
 auto y = MySender(next_keyboard_scan_code());
@@ -397,8 +396,7 @@ auto y = MySender(next_keyboard_scan_code());
 
 ```cpp
 // This is a type erased sender that can hold any sender that can complete with an i32, void, or an error.
-using MySender = di::AnySender<
-    di::CompletionSignatures<di::SetValue(i32), di::SetValue(), di::SetError(di::Error)>;
+using MySender = di::AnySender < di::CompletionSignatures<di::SetValue(i32), di::SetValue(), di::SetError(di::Error)>;
 
 auto x = MySender(di::just(5));
 auto y = MySender(di::just());
@@ -493,3 +491,91 @@ is probably the worst idea in terms of safety.
 - [libunifex](https://github.com/facebookexperimental/libunifex/)
 - [NJS's Blog on Structured
   Concurrency](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/)
+
+```cpp
+template<typename Object, typename CreateSend>
+struct RunSender {
+public:
+    using is_sender = di::SequenceTag;
+    using CompletionSignatures =
+        di::CompletionSignatures<di::SetValue(di::ReferenceWrapper<Object>), di::SetError(di::Error), di::SetStopped()>;
+    IoUringContext* parent;
+    di::ReferenceWrapper<Object> object;
+
+private:
+    template<typename Rec>
+    struct OperationStateT {
+        struct Type : di::Immovable {
+            struct Rec1 {
+                using is_receiver = void;
+
+                di::Function<void()> complete;
+
+                friend auto tag_invoke(di::Tag<di::execution::set_value>, Rec1&& self) { self.complete(); }
+                friend auto tag_invoke(di::Tag<di::execution::set_stopped>, Rec1&& self) { self.complete(); }
+            };
+
+            struct Rec2 : di::ReceiverAdaptor<Rec2> {
+            private:
+                using Base = di::ReceiverAdaptor<Rec2>;
+                friend Base;
+
+            public:
+                explicit Rec2(Rec* receiver) : m_receiver(receiver) {}
+
+                auto base() const& -> Rec const& { return *m_receiver; }
+                auto base() && -> Rec&& { return di::move(*m_receiver); }
+
+            private:
+                Rec* m_receiver;
+            };
+
+            explicit Type(IoUringContext* parent, di::ReferenceWrapper<Object> object, Rec&& receiver)
+                : m_parent(parent), m_object(object), m_receiver(di::move(receiver)) {}
+
+        private:
+            using NextSender = di::meta::NextSenderOf<Rec, CreateSend>;
+            using Op1 = di::meta::ConnectResult<NextSender, Rec1>;
+            using Op2 = di::meta::ConnectResult<CloseSender, Rec2>;
+
+            void finish_phase1() {
+                auto& op = m_op.template emplace<2>(di::DeferConstruct([&] {
+                    return di::execution::connect(CloseSender(m_parent, m_object.get().fd()),
+                                                  Rec2(di::addressof(m_receiver)));
+                }));
+                di::execution::start(op);
+            }
+
+            friend void tag_invoke(di::Tag<di::execution::start>, Type& self) {
+                auto& op = self.m_op.template emplace<1>(di::DeferConstruct([&] {
+                    return di::execution::connect(
+                        di::execution::set_next(self.m_receiver, CreateSend(self.m_parent, self.m_object)),
+                        Rec1([&self] {
+                            return self.finish_phase1();
+                        }));
+                }));
+                di::execution::start(op);
+            }
+
+            IoUringContext* m_parent;
+            di::ReferenceWrapper<Object> m_object;
+            [[no_unique_address]] Rec m_receiver;
+            DI_IMMOVABLE_NO_UNIQUE_ADDRESS di::Variant<di::Void, Op1, Op2> m_op;
+        };
+    };
+
+    template<typename Receiver>
+    using OperationState = di::meta::Type<OperationStateT<Receiver>>;
+
+    template<
+        di::ReceiverOf<di::CompletionSignatures<di::SetValue(), di::SetError(di::Error), di::SetStopped()>> Receiver>
+    friend auto tag_invoke(di::Tag<di::execution::subscribe>, RunSender self, Receiver receiver) {
+        return OperationState<Receiver> { self.parent, self.object, di::move(receiver) };
+    }
+
+    constexpr friend auto tag_invoke(di::Tag<di::execution::get_env>, RunSender const& self) {
+        return di::execution::make_env(Env(self.parent),
+                                       di::execution::with(di::execution::get_sequence_cardinality, di::c_<1ZU>));
+    }
+};
+```

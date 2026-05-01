@@ -2,8 +2,8 @@
 
 #include "di/container/allocator/allocator.h"
 #include "di/execution/concepts/sender.h"
-#include "di/execution/io/async_read_some.h"
-#include "di/execution/io/async_write_some.h"
+#include "di/execution/io/read_some.h"
+#include "di/execution/io/write_some.h"
 #include "di/function/tag_invoke.h"
 #include "di/meta/algorithm.h"
 #include "di/meta/core.h"

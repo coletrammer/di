@@ -16,11 +16,11 @@
 #include "di/execution/interface/connect.h"
 #include "di/execution/interface/get_env.h"
 #include "di/execution/interface/run.h"
-#include "di/execution/io/async_read_exactly.h"
-#include "di/execution/io/async_read_some.h"
-#include "di/execution/io/async_write_exactly.h"
-#include "di/execution/io/async_write_some.h"
 #include "di/execution/io/ipc_protocol.h"
+#include "di/execution/io/read_exactly.h"
+#include "di/execution/io/read_some.h"
+#include "di/execution/io/write_exactly.h"
+#include "di/execution/io/write_some.h"
 #include "di/execution/query/get_allocator.h"
 #include "di/execution/query/get_sequence_cardinality.h"
 #include "di/execution/query/get_stop_token.h"
@@ -208,16 +208,16 @@ namespace ipc_binary_ns {
         auto operator()(ConnectionData<Proto, Read, Write, Alloc>* data) const {
             return repeat(let_value_with(
                 [data](Array<byte, sizeof(MessageHeader)>& buffer) {
-                    return async_read_exactly(data->read, buffer.span()) | let_value([data, &buffer] {
+                    return read_exactly(data->read, buffer.span()) | let_value([data, &buffer] {
                                auto header = util::bit_cast<MessageHeader>(buffer);
                                auto const total_size = u32(header.message_size);
                                return just_from([data, total_size] {
                                           return data->receive_buffer.reserve(total_size);
                                       }) |
                                       let_value([data, header] {
-                                          return async_read_exactly(data->read, Span { data->receive_buffer.data(),
-                                                                                       header.message_size.value() -
-                                                                                           sizeof(MessageHeader) }) |
+                                          return read_exactly(data->read, Span { data->receive_buffer.data(),
+                                                                                 header.message_size.value() -
+                                                                                     sizeof(MessageHeader) }) |
                                                  let_value([data, header] {
                                                      return message_decode<Proto, ClientOrServer>(
                                                          header, Span { data->receive_buffer.data(),
@@ -351,20 +351,20 @@ namespace ipc_binary_ns {
                                .message_size = total_size,
                            };
                            auto as_bytes = di::bit_cast<Array<byte, sizeof(MessageHeader)>>(message_header);
-                           DI_TRY(write_exactly(writer, as_bytes.span()));
+                           DI_TRY(di::write_exactly(writer, as_bytes.span()));
                            DI_TRY(serialize_binary(writer, message));
                            data->send_buffer = di::move(writer).vector();
                            return message_number;
                        }) |
                        let_value([data = self.data](u32 message_number) {
                            if constexpr (concepts::MessageWithReply<U>) {
-                               return async_write_exactly(data->write, data->send_buffer.span()) |
+                               return write_exactly(data->write, data->send_buffer.span()) |
                                       let_value([data, message_number] {
                                           return WaitForReplySender<Proto, Read, Write, Alloc, ClientOrServer,
                                                                     message_index>(data, message_number);
                                       });
                            } else {
-                               return async_write_exactly(data->write, data->send_buffer.span());
+                               return write_exactly(data->write, data->send_buffer.span());
                            }
                        });
             }

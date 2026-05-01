@@ -5,10 +5,10 @@
 #include "di/execution/algorithm/then.h"
 #include "di/execution/algorithm/use_resources.h"
 #include "di/execution/algorithm/with_env.h"
-#include "di/execution/io/async_read_some.h"
-#include "di/execution/io/async_write_some.h"
 #include "di/execution/io/ipc_binary.h"
 #include "di/execution/io/ipc_protocol.h"
+#include "di/execution/io/read_some.h"
+#include "di/execution/io/write_some.h"
 #include "di/execution/sequence/ignore_all.h"
 #include "di/execution/sequence/then_each.h"
 #include "di/function/overload.h"
@@ -24,7 +24,7 @@ namespace ipc_binary {
 struct AsyncReader {
     di::VectorReader<> sync_reader;
 
-    friend auto tag_invoke(di::Tag<di::execution::async_read_some>, AsyncReader& self, di::Span<byte> buffer, auto) {
+    friend auto tag_invoke(di::Tag<di::execution::read_some>, AsyncReader& self, di::Span<byte> buffer, auto) {
         return di::execution::just_from([&self, buffer] -> di::Result<usize> {
             return di::read_some(self.sync_reader, buffer);
         });
@@ -34,8 +34,7 @@ struct AsyncReader {
 struct AsyncWriter {
     di::VectorWriter<> sync_writer;
 
-    friend auto tag_invoke(di::Tag<di::execution::async_write_some>, AsyncWriter& self, di::Span<byte const> buffer,
-                           auto) {
+    friend auto tag_invoke(di::Tag<di::execution::write_some>, AsyncWriter& self, di::Span<byte const> buffer, auto) {
         return di::execution::just_from([&self, buffer] -> di::Result<usize> {
             return di::write_some(self.sync_writer, buffer);
         });
