@@ -13,6 +13,7 @@ namespace detail {
             auto context = WriterFormatContext<Writer, Enc>(writer, format_string.encoding());
             (void) fmt::vformat_encoded_context<Enc>(
                 format_string, fmt::make_format_args<WriterFormatContext<Writer, Enc>>(args...), context);
+            (void) flush(writer);
         }
     };
 }

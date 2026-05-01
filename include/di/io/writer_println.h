@@ -1,6 +1,7 @@
 #pragma once
 
 #include "di/format/prelude.h"
+#include "di/io/interface/writer.h"
 #include "di/io/writer_format_context.h"
 
 namespace di::io {
@@ -14,6 +15,7 @@ namespace detail {
             (void) fmt::vformat_encoded_context<Enc>(
                 format_string, fmt::make_format_args<WriterFormatContext<Writer, Enc>>(args...), context);
             (void) context.output('\n');
+            (void) flush(writer);
         }
     };
 }
