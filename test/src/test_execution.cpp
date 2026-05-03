@@ -48,6 +48,7 @@
 #include "di/execution/scope/scope.h"
 #include "di/execution/types/empty_env.h"
 #include "di/execution/types/prelude.h"
+#include "di/execution/util/variant_sender.h"
 #include "di/function/make_deferred.h"
 #include "di/platform/prelude.h"
 #include "di/sync/prelude.h"
@@ -720,6 +721,17 @@ static void split() {
               di::Unexpected(di::BasicError::NotEnoughMemory));
 }
 
+static void variant_sender() {
+    namespace execution = di::execution;
+
+    using S1 = decltype(execution::just());
+    using S2 = di::Stopped;
+    using V = di::VariantSender<S1, S2>;
+
+    ASSERT(execution::sync_wait(V(execution::just())));
+    ASSERT_EQ(execution::sync_wait(V(execution::stopped)), di::Unexpected(di::BasicError::OperationCanceled));
+}
+
 TEST(execution, meta)
 TEST(execution, sync_wait)
 TEST(execution, just)
@@ -740,4 +752,5 @@ TEST(execution, start_detached)
 TEST(execution, ensure_started)
 TEST(execution, bulk)
 TEST(execution, split)
+TEST(execution, variant_sender)
 }
