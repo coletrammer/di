@@ -8,8 +8,8 @@ namespace detail {
     struct ScheduleFunction {
         template<typename Scheduler>
         requires(concepts::TagInvocable<ScheduleFunction, Scheduler>)
-        constexpr auto operator()(Scheduler&& scheduler) const -> concepts::Sender auto {
-            return function::tag_invoke(*this, util::forward<Scheduler>(scheduler));
+        constexpr static auto operator()(Scheduler&& scheduler) -> concepts::Sender auto {
+            return function::tag_invoke(ScheduleFunction {}, util::forward<Scheduler>(scheduler));
         }
     };
 }
