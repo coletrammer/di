@@ -10,6 +10,7 @@
 #include "di/execution/algorithm/bulk.h"
 #include "di/execution/algorithm/ensure_started.h"
 #include "di/execution/algorithm/execute.h"
+#include "di/execution/algorithm/first_successful.h"
 #include "di/execution/algorithm/into_result.h"
 #include "di/execution/algorithm/into_variant.h"
 #include "di/execution/algorithm/just.h"
@@ -523,6 +524,29 @@ static void when_all() {
     ASSERT(executed);
 }
 
+static void first_successful() {
+    namespace ex = di::execution;
+
+    auto s = ex::first_successful(ex::stopped, ex::just(42), ex::just(52),
+                                  ex::just_or_error(di::Result<int>(di::Unexpected(di::BasicError::InvalidArgument))));
+    ASSERT_EQ(ex::sync_wait(di::move(s)), 42);
+
+    auto executed = false;
+    auto read_stop_token = ex::get_stop_token() | ex::then([&](di::concepts::StoppableToken auto stop_token) {
+                               DI_ASSERT(stop_token.stop_requested());
+                               executed = true;
+                               return 52;
+                           });
+    auto s2 = ex::first_successful(ex::just(42), read_stop_token);
+    ASSERT_EQ(ex::sync_wait(di::move(s2)), 42);
+    ASSERT(executed);
+
+    auto s3 =
+        ex::first_successful(ex::just_or_error(di::Result<int>(di::Unexpected(di::BasicError::InvalidArgument))),
+                             ex::just_or_error(di::Result<int>(di::Unexpected(di::BasicError::OperationCanceled))));
+    ASSERT_EQ(ex::sync_wait(di::move(s3)), di::Unexpected(di::BasicError::InvalidArgument));
+}
+
 static void with_env() {
     //! [with_env]
     namespace execution = di::execution;
@@ -746,6 +770,7 @@ TEST(execution, use_resources)
 TEST(execution, any_sender)
 TEST(execution, into_result)
 TEST(execution, when_all)
+TEST(execution, first_successful)
 TEST(execution, with_env)
 TEST(execution, counting_scope)
 TEST(execution, start_detached)
