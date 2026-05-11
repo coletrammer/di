@@ -34,13 +34,13 @@ private:
         result.fill(255);
 
         auto v = u8(0);
-        for (auto ch : range('A', 'Z' + 1)) {
+        for (auto ch : range('A', char('Z' + 1))) {
             result[ch] = v++;
         }
-        for (auto ch : range('a', 'z' + 1)) {
+        for (auto ch : range('a', char('z' + 1))) {
             result[ch] = v++;
         }
-        for (auto ch : range('0', '9' + 1)) {
+        for (auto ch : range('0', char('9' + 1))) {
             result[ch] = v++;
         }
         result['+'] = v++;
