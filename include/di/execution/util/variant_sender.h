@@ -1,5 +1,4 @@
 #pragma once
-
 #include "di/execution/concepts/receiver.h"
 #include "di/execution/concepts/receiver_of.h"
 #include "di/execution/concepts/sender.h"
@@ -10,6 +9,7 @@
 #include "di/execution/meta/env_of.h"
 #include "di/meta/algorithm.h"
 #include "di/meta/core.h"
+#include "di/util/defer_construct.h"
 #include "di/vocab/variant/visit.h"
 
 namespace di::execution {
@@ -25,8 +25,11 @@ namespace variant_sender_ns {
             di::Variant<meta::ConnectResult<Senders, R>...> op;
 
             template<typename S>
+            requires(concepts::OneOf<meta::RemoveCVRef<S>, Senders...>)
             explicit Type(S&& sender, R receiver)
-                : op(in_place_type<meta::ConnectResult<S, R>>, connect(di::forward<S>(sender), di::move(receiver))) {}
+                : op(in_place_type<meta::ConnectResult<meta::RemoveCVRef<S>, R>>, util::DeferConstruct([&] {
+                         return connect(auto(di::forward<S>(sender)), di::move(receiver));
+                     })) {}
 
             friend void tag_invoke(Tag<start>, Type& self) { di::visit(start, self.op); }
         };
@@ -55,12 +58,12 @@ namespace variant_sender_ns {
             template<concepts::RemoveCVRefSameAs<Type> Self, concepts::Receiver Rec>
             requires(concepts::ConstructibleFrom<Type, Self> &&
                      concepts::ReceiverOf<Rec, Sigs<meta::EnvOf<Rec>, Senders...>>)
-            friend auto tag_invoke(Tag<connect>, Self&& self, Rec out_r) {
-                return di::visit(
-                    [&](auto& s) -> Op<Rec, Senders...> {
-                        return Op<Rec, Senders...>(di::forward_like<Self>(s), di::move(out_r));
+            friend auto tag_invoke(Tag<connect>, Self&& self, Rec out_r) -> Op<Rec, Senders...> {
+                return di::visit<Op<Rec, Senders...>>(
+                    [&]<typename S>(S&& s) -> Op<Rec, Senders...> {
+                        return Op<Rec, Senders...>(di::forward<S>(s), di::move(out_r));
                     },
-                    self.sender);
+                    di::forward_like<Self>(self.sender));
             }
         };
     };

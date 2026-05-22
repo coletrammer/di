@@ -45,8 +45,6 @@ private:
         RBTree<Value, Comp, Tag, Interface, is_multi, OwningRBTree<Value, Comp, Tag, Alloc, Interface, is_multi>>;
 
     using Node = RBTreeNode<Tag>;
-    using Iterator = RBTreeIterator<Value, Tag>;
-    using ConstIterator = container::ConstIteratorImpl<Iterator>;
 
     using AllocResult = meta::AllocatorResult<Alloc>;
 
@@ -55,6 +53,9 @@ private:
 
 public:
     using Base::Base;
+
+    using Iterator = RBTreeIterator<Value, Tag>;
+    using ConstIterator = container::ConstIteratorImpl<Iterator>;
 
     constexpr auto allocator() -> Alloc& { return m_allocator; }
 
