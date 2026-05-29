@@ -96,6 +96,24 @@ constexpr static void ref() {
     ASSERT_EQ(yf(y), 1);
 }
 
+constexpr static void equal() {
+    using Any = di::any::AnyRef<di::meta::List<di::any::Equal>>;
+
+    i32 v = 4;
+    i32 w = 4;
+    i32 u = 5;
+    i64 q = 4;
+
+    auto x = Any(v);
+    auto y = Any(w);
+    auto z = Any(u);
+    auto zz = Any(q);
+
+    ASSERT_EQ(x, y);
+    ASSERT_NOT_EQ(x, z);
+    ASSERT_NOT_EQ(x, zz);
+}
+
 static void inline_() {
     using Any = di::any::AnyInline<Interface>;
 
@@ -280,6 +298,7 @@ constexpr static void rvalue() {
 TESTC(any, meta)
 TESTC(any, vtable)
 TESTC(any, ref)
+TESTC(any, equal)
 TEST(any, inline_)
 TESTC_GCC_NOSAN(any, unique)
 TESTC_GCC_NOSAN(any, hybrid)

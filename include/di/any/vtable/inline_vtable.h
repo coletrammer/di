@@ -37,6 +37,9 @@ struct InlineVTable {
             return util::get<index>(m_storage);
         }
 
+        auto operator==(Invoke const&) const -> bool = default;
+        auto operator<=>(Invoke const&) const = default;
+
     private:
         constexpr Invoke(Storage storage) : m_storage(di::move(storage)) {}
 

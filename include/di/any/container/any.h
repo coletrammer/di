@@ -3,6 +3,7 @@
 #include "di/any/concepts/prelude.h"
 #include "di/any/meta/prelude.h"
 #include "di/any/storage/prelude.h"
+#include "di/any/types/equal.h"
 #include "di/any/types/prelude.h"
 #include "di/any/vtable/prelude.h"
 #include "di/function/monad/monad_try.h"
@@ -290,6 +291,27 @@ struct AnyT {
                 }
             }
             m_vtable.reset();
+        }
+
+        constexpr auto operator==(Type const& other) const -> bool
+        requires(meta::Contains<Interface, Equal>)
+        {
+            if constexpr (!is_reference) {
+                if (!this->has_value() || !other.has_value()) {
+                    return this->has_value() == other.has_value();
+                }
+            }
+
+            // Comparing vtables is a bit suspect, because the function pointers for identical types may not be
+            // identical in certain cases (such as dlopen() or shared library boundaries?), although I am not certain.
+            if (this->m_vtable != other.m_vtable) {
+                return false;
+            }
+            auto erased_fp = m_vtable[Equal {}];
+            auto as_storage = [](Type const& object) -> void* {
+                return di::voidify(di::addressof(static_cast<Storage const&>(object)));
+            };
+            return erased_fp(as_storage(*this), as_storage(other));
         }
 
     private:

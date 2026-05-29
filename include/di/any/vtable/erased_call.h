@@ -4,8 +4,10 @@
 #include "di/any/concepts/method.h"
 #include "di/any/concepts/method_callable_with.h"
 #include "di/any/meta/method_signature.h"
+#include "di/any/types/equal.h"
 #include "di/function/invoke.h"
 #include "di/meta/algorithm.h"
+#include "di/meta/compare.h"
 #include "di/meta/language.h"
 #include "di/meta/util.h"
 #include "di/util/forward_like.h"
@@ -40,6 +42,22 @@ struct ErasedCallImpl<Method<Tag, R(Self, BArgs...)>, Storage, T> {
         } else {
             return function::invoke_r<R>(tag, util::forward_like<Self>(*object), util::forward<BArgs>(bargs)...);
         }
+    }
+};
+
+template<typename Storage, typename T>
+struct ErasedCallImpl<Equal, Storage, T> {
+    constexpr static auto call(void* self, void* other) -> bool {
+        static_assert(concepts::AnyStorable<T, Storage>,
+                      "Cannot create a vtable function for T not storable in Storage.");
+        static_assert(concepts::EqualityComparable<T>, "Cannot create a vtable function T is not equality comparable.");
+
+        using QualifiedStorage = meta::MaybeConst<concepts::Const<meta::RemoveReference<This>>, Storage>;
+        auto* typed_self_storage = static_cast<QualifiedStorage*>(self);
+        auto* typed_self = typed_self_storage->template down_cast<meta::RemoveReference<T>>();
+        auto* typed_other_storage = static_cast<QualifiedStorage*>(other);
+        auto* typed_other = typed_other_storage->template down_cast<meta::RemoveReference<T>>();
+        return *typed_self == *typed_other;
     }
 };
 }
