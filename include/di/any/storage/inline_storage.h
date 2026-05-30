@@ -16,23 +16,26 @@ namespace di::any {
 namespace detail {
     template<typename InlineStorage>
     struct InlineStorageManage {
-        using Type = Method<InlineStorageManage, void(This&, InlineStorage*)>;
+        using Type = Method<InlineStorageManage, void(This&, InlineStorage*, bool)>;
 
         template<typename T>
-        void operator()(T&, InlineStorage*) const;
+        void operator()(T&, InlineStorage*, bool copy) const;
     };
 
     template<typename InlineStorage>
     constexpr inline auto inline_storage_manage = InlineStorageManage<InlineStorage> {};
 }
 
-template<size_t inline_size, size_t inline_align>
+template<StorageCategory category, size_t inline_size, size_t inline_align = alignof(void*)>
 struct InlineStorage {
+    static_assert(category == StorageCategory::MoveOnly || category == StorageCategory::Copyable,
+                  "InlineStorage only supports MoveOnly and Copyable objects");
+
 public:
     using Manage = meta::Type<detail::InlineStorageManage<InlineStorage>>;
     using Interface = meta::List<Manage>;
 
-    constexpr static auto storage_category() -> StorageCategory { return StorageCategory::MoveOnly; }
+    constexpr static auto storage_category() -> StorageCategory { return category; }
 
     template<typename T>
     constexpr static auto creation_is_fallible(InPlaceType<T>) -> bool {
@@ -56,14 +59,34 @@ public:
 
     ~InlineStorage() = default;
 
+    constexpr static void copy_construct(concepts::VTableFor<Interface> auto const& vtable, InlineStorage* dest,
+                                         InlineStorage const* source)
+    requires(storage_category() == StorageCategory::Copyable)
+    {
+        if (!vtable.empty()) {
+            auto const fp = vtable[Manage {}];
+            fp(dest, const_cast<InlineStorage*>(source), true);
+        }
+    }
+
     constexpr static void move_construct(concepts::VTableFor<Interface> auto& vtable, InlineStorage* dest,
                                          InlineStorage* source) {
         if (!vtable.empty()) {
             auto const fp = vtable[Manage {}];
-            fp(dest, source);
+            fp(dest, source, false);
 
             vtable.reset();
         }
+    }
+
+    template<concepts::VTableFor<Interface> VTable>
+    constexpr static void copy_assign(VTable& dest_vtable, InlineStorage* dest, VTable const& source_vtable,
+                                      InlineStorage const* source)
+    requires(storage_category() == StorageCategory::Copyable)
+    {
+        destroy(dest_vtable, dest);
+        dest_vtable = source_vtable;
+        copy_construct(source_vtable, dest, source);
     }
 
     template<concepts::VTableFor<Interface> VTable>
@@ -77,7 +100,7 @@ public:
     constexpr static void destroy(concepts::VTableFor<Interface> auto& vtable, InlineStorage* self) {
         if (!vtable.empty()) {
             auto const fp = vtable[Manage {}];
-            fp(self, nullptr);
+            fp(self, nullptr, false);
 
             vtable.reset();
         }
@@ -103,8 +126,17 @@ private:
 namespace detail {
     template<typename InlineStorage>
     template<typename T>
-    void InlineStorageManage<InlineStorage>::operator()(T& a, InlineStorage* b) const {
+    void InlineStorageManage<InlineStorage>::operator()(T& a, InlineStorage* b, bool copy) const {
         if (b) {
+            if constexpr (InlineStorage::storage_category() == StorageCategory::Copyable) {
+                if (copy) {
+                    // Copy from b into a.
+                    auto* b_value = const_cast<InlineStorage const&>(*b).template down_cast<T>();
+                    util::construct_at(util::addressof(a), *b_value);
+                    return;
+                }
+            }
+
             // Move from b into a.
             auto* b_value = b->template down_cast<T>();
             util::construct_at(util::addressof(a), util::move(*b_value));

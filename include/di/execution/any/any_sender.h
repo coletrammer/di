@@ -41,7 +41,8 @@
 namespace di::execution {
 namespace detail {
     template<typename Rec, typename Op, typename Env>
-    using AnySenderInterface = meta::List<types::Method<detail::ConnectFunction, Op(types::This&&, Rec)>>;
+    using AnySenderInterface =
+        InterfaceWithEnv<meta::List<types::Method<detail::ConnectFunction, Op(types::This&&, Rec)>>, Env>;
 }
 
 template<typename Sigs, typename Env, typename Storage, typename VTablePolicy, typename Op, typename Rec>

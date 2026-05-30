@@ -4,6 +4,7 @@
 #include "di/any/concepts/any_storage.h"
 #include "di/any/container/prelude.h"
 #include "di/any/storage/inline_storage.h"
+#include "di/any/storage/storage_category.h"
 #include "di/any/types/method.h"
 #include "di/any/types/this.h"
 #include "di/any/vtable/maybe_inline_vtable.h"
@@ -11,11 +12,15 @@
 #include "di/execution/concepts/completion_signature.h"
 #include "di/execution/concepts/receiver_of.h"
 #include "di/execution/concepts/valid_completion_signatures.h"
+#include "di/execution/meta/stop_token_of.h"
 #include "di/execution/receiver/set_error.h"
 #include "di/meta/algorithm.h"
 #include "di/meta/core.h"
 #include "di/meta/language.h"
 #include "di/meta/operations.h"
+#include "di/meta/util.h"
+#include "di/sync/concepts/unstoppable_token.h"
+#include "di/sync/stop_token/in_place_stop_token.h"
 #include "di/vocab/error/error.h"
 
 namespace di::execution {
@@ -33,6 +38,23 @@ namespace detail {
     template<concepts::ValidCompletionSignatures Sigs, typename Env>
     using AnyReceiverMethods =
         InterfaceWithEnv<meta::Transform<meta::Unique<meta::AsList<AnySigs<Sigs>>>, meta::Quote<MethodForSig>>, Env>;
+
+    struct StopTokenEnv {
+        sync::InPlaceStopToken stop_token;
+
+        template<typename E, typename S = meta::StopTokenOf<meta::RemoveCVRef<E>>>
+        requires(!concepts::RemoveCVRefSameAs<StopTokenEnv, E> &&
+                 (concepts::UnstoppableToken<S> || concepts::SameAs<InPlaceStopToken, S>) )
+        constexpr StopTokenEnv(E&& env) {
+            if constexpr (concepts::UnstoppableToken<S>) {
+                return;
+            } else if (concepts::SameAs<InPlaceStopToken, S>) {
+                stop_token = get_stop_token(env);
+            }
+        }
+
+        friend auto tag_invoke(Tag<get_stop_token>, StopTokenEnv const& env) { return env.stop_token; }
+    };
 }
 
 template<typename Sigs, typename Env, typename Storage, typename VTablePolicy>
@@ -57,8 +79,9 @@ struct AnyReceiverT {
     };
 };
 
-template<concepts::ValidCompletionSignatures Sigs, typename Env = void,
-         concepts::AnyStorage Storage = any::InlineStorage<2 * sizeof(void*), alignof(void*)>,
+template<concepts::ValidCompletionSignatures Sigs, typename Env = detail::StopTokenEnv,
+         concepts::AnyStorage Storage =
+             any::InlineStorage<any::StorageCategory::MoveOnly, 2 * sizeof(void*), alignof(void*)>,
          typename VTablePolicy = any::MaybeInlineVTable<3>>
 using AnyReceiver = meta::Type<AnyReceiverT<Sigs, Env, Storage, VTablePolicy>>;
 }

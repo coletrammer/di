@@ -29,6 +29,7 @@
 #include "di/execution/algorithm/when_all.h"
 #include "di/execution/algorithm/with_env.h"
 #include "di/execution/any/any_operation_state.h"
+#include "di/execution/any/any_scheduler.h"
 #include "di/execution/any/any_sender.h"
 #include "di/execution/concepts/prelude.h"
 #include "di/execution/concepts/receiver.h"
@@ -454,6 +455,37 @@ static void any_sender() {
     ASSERT_EQ(di::sync_wait(di::Result<int>(42)), 42);
     ASSERT_EQ(di::sync_wait(di::Unexpected(di::BasicError::InvalidArgument)),
               di::Unexpected(di::BasicError::InvalidArgument));
+
+    auto executed = false;
+    auto read_stop_token = ex::get_stop_token() | ex::then([&](di::concepts::StoppableToken auto stop_token) {
+                               DI_ASSERT(stop_token.stop_requested());
+                               executed = true;
+                           });
+    auto s4 = ex::when_all(ex::just_stopped(), di::AnySenderOf<>(read_stop_token));
+    ASSERT_EQ(ex::sync_wait(di::move(s4)), di::Unexpected(di::BasicError::OperationCanceled));
+    ASSERT(executed);
+}
+
+static void any_scheduler() {
+    namespace ex = di::execution;
+
+    using AnySched = ex::AnyScheduler<>;
+    static_assert(di::concepts::Scheduler<AnySched>);
+
+    auto concrete = ex::InlineScheduler {};
+    auto any = AnySched(concrete);
+
+    auto executed = false;
+
+    auto env = ex::get_env(ex::schedule(any));
+    ASSERT_EQ(ex::get_completion_scheduler<ex::SetValue>(env), any);
+
+    auto task = ex::schedule(any) | ex::then([&] {
+                    executed = true;
+                });
+    ASSERT(ex::sync_wait(di::move(task)));
+
+    ASSERT_EQ(executed, true);
 }
 
 static void into_result() {
@@ -768,6 +800,7 @@ TEST(execution, continues_on)
 TEST(execution, as)
 TEST(execution, use_resources)
 TEST(execution, any_sender)
+TEST(execution, any_scheduler)
 TEST(execution, into_result)
 TEST(execution, when_all)
 TEST(execution, first_successful)
