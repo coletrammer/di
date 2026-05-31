@@ -57,8 +57,15 @@ private:
     friend auto operator==(InlineScheduler const&, InlineScheduler const&) -> bool = default;
     friend auto tag_invoke(types::Tag<schedule>, InlineScheduler const&) { return Sender {}; }
 };
+
+struct InlineContext {
+    auto get_scheduler() -> InlineScheduler { return {}; }
+    void finish() {}
+    void run() {}
+};
 }
 
 namespace di {
+using execution::InlineContext;
 using execution::InlineScheduler;
 }

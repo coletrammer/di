@@ -6,6 +6,7 @@
 #include "di/execution/meta/connect_result.h"
 #include "di/execution/query/is_always_lockstep_sequence.h"
 #include "di/execution/receiver/receiver_adaptor.h"
+#include "di/execution/receiver/set_stopped.h"
 #include "di/execution/sequence/sequence_sender.h"
 #include "di/function/container/function.h"
 #include "di/function/tag_invoke.h"
@@ -77,6 +78,10 @@ namespace resource_helper_ns {
             explicit Type(Object* object, OutRec out_r) : object(object), out_r(di::move(out_r)) {}
 
             void finish_phase1() {
+                if (!token.has_value()) {
+                    set_stopped(di::move(out_r));
+                    return;
+                }
                 auto& op = this->op.template emplace<2>(di::DeferConstruct([&] {
                     return connect(token.value().close(), Rec2(di::addressof(out_r)));
                 }));

@@ -72,7 +72,7 @@ private:
         return fmt::formatter<container::TransparentStringView, Enc>(parse_context, debug) %
                [](concepts::CopyConstructible auto formatter) {
                    return [=](concepts::FormatContext auto& context, UUID uuid) {
-#if DI_GCC
+#ifdef DI_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
@@ -129,7 +129,7 @@ private:
                        output_byte(util::to_underlying(uuid.m_node[3]));
                        output_byte(util::to_underlying(uuid.m_node[4]));
                        output_byte(util::to_underlying(uuid.m_node[5]));
-#if DI_GCC
+#ifdef DI_GCC
 #pragma GCC diagnostic pop
 #endif
 

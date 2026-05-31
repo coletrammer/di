@@ -283,7 +283,7 @@ receiver model. This is because the notion of an async scope does not mirror the
 instance:
 
 ```cpp
-auto f() -> di::Lazy<> {
+auto f() -> di::Task<> {
     for (int i = 0; i < 10; i++) {
         // Let's say this somehow worked.
         auto thread_pool = co_await di::co_use_resource<di::ThreadPool>(4);

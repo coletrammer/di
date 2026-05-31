@@ -17,7 +17,6 @@
 #include "di/execution/concepts/sender.h"
 #include "di/execution/concepts/sender_to.h"
 #include "di/execution/concepts/valid_completion_signatures.h"
-#include "di/execution/coroutine/lazy.h"
 #include "di/execution/interface/connect.h"
 #include "di/execution/meta/connect_result.h"
 #include "di/execution/receiver/set_error.h"
@@ -109,8 +108,6 @@ struct AnySenderOfT {
     public:
         using Base::Base;
         using Base::operator=;
-
-        using promise_type = execution::Lazy<T>::promise_type;
 
         Type()
         requires(concepts::LanguageVoid<T>)

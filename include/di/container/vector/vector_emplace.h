@@ -17,6 +17,10 @@
 #include "di/vocab/expected/prelude.h"
 
 namespace di::container::vector {
+#ifdef DI_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-local-addr"
+#endif
 template<concepts::detail::MutableVector Vec, typename... Args, typename CIter = meta::detail::VectorConstIterator<Vec>,
          typename R = meta::detail::VectorIterator<Vec>,
          typename G = meta::LikeExpected<meta::detail::VectorAllocResult<Vec>, R>>
@@ -50,4 +54,7 @@ constexpr auto emplace(Vec& vector, CIter cposition, Args&&... args) -> G {
     vector.assume_size(new_size);
     return result;
 }
+#ifdef DI_GCC
+#pragma GCC diagnostic pop
+#endif
 }

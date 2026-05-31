@@ -39,7 +39,7 @@ namespace next_ns {
 ///     co_return {};
 /// }
 ///
-/// auto f() -> di::Lazy<> {
+/// auto f() -> di::Task<> {
 ///     auto sequence = co_await g();
 ///     while (di::concepts::Optional auto next = co_await ex::next(sequence)) {
 ///         dius::println("{}"_sv, *next);

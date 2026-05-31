@@ -1,3 +1,5 @@
+#pragma once
+
 #include "di/any/container/any.h"
 #include "di/any/meta/merge_interfaces.h"
 #include "di/any/storage/hybrid_storage.h"

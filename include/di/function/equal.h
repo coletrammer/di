@@ -7,12 +7,12 @@
 namespace di::function {
 struct Equal {
     template<typename T, typename U>
-    constexpr auto operator()(T const& a, U const& b) const -> bool
+    constexpr auto operator()(T&& a, U&& b) const -> bool
     requires(requires {
         { a == b } -> concepts::ImplicitlyConvertibleTo<bool>;
     })
     {
-        if constexpr (concepts::Integral<T> && concepts::Integral<U>) {
+        if constexpr (concepts::Integral<meta::RemoveCVRef<T>> && concepts::Integral<meta::RemoveCVRef<U>>) {
             return math::cmp_equal(a, b);
         } else {
             return a == b;

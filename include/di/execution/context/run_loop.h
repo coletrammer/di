@@ -30,7 +30,7 @@ private:
 
     template<typename Receiver>
     struct OperationStateT {
-        struct Type : OperationStateBase {
+        struct Type final : OperationStateBase {
         public:
             Type(RunLoop* parent, Receiver&& receiver) : OperationStateBase(parent), m_receiver(util::move(receiver)) {}
 

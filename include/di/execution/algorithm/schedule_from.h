@@ -4,6 +4,7 @@
 #include "di/execution/interface/get_env.h"
 #include "di/execution/meta/env_of.h"
 #include "di/execution/meta/prelude.h"
+#include "di/execution/query/get_completion_scheduler.h"
 #include "di/execution/receiver/prelude.h"
 #include "di/execution/types/prelude.h"
 #include "di/function/tag_invoke.h"
@@ -196,10 +197,7 @@ namespace schedule_from_ns {
                 Sched scheduler;
                 SenderEnv sender_env;
 
-                template<concepts::OneOf<GetCompletionScheduler<SetValue>, GetCompletionScheduler<SetStopped>> Tag>
-                friend auto tag_invoke(Tag, Env const& self) {
-                    return self.scheduler;
-                }
+                friend auto tag_invoke(GetCompletionScheduler<SetValue>, Env const& self) { return self.scheduler; }
 
                 template<concepts::ForwardingQuery Tag, typename... Args>
                 requires(!concepts::OneOf<Tag, GetCompletionScheduler<SetValue>, GetCompletionScheduler<SetError>,

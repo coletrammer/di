@@ -7,7 +7,9 @@
 #include "di/container/allocator/allocator.h"
 #include "di/container/allocator/fail_allocator.h"
 #include "di/container/view/prelude.h"
+#include "di/execution/algorithm/affine_on.h"
 #include "di/execution/algorithm/bulk.h"
+#include "di/execution/algorithm/continues_on.h"
 #include "di/execution/algorithm/ensure_started.h"
 #include "di/execution/algorithm/execute.h"
 #include "di/execution/algorithm/first_successful.h"
@@ -36,11 +38,14 @@
 #include "di/execution/concepts/receiver_of.h"
 #include "di/execution/context/inline_scheduler.h"
 #include "di/execution/context/run_loop.h"
+#include "di/execution/context/single_threaded_context.h"
+#include "di/execution/coroutine/task.h"
 #include "di/execution/interface/run.h"
 #include "di/execution/meta/completion_signatures_of.h"
 #include "di/execution/meta/sends_stopped.h"
 #include "di/execution/prelude.h"
 #include "di/execution/query/get_allocator.h"
+#include "di/execution/query/get_completion_scheduler.h"
 #include "di/execution/query/get_scheduler.h"
 #include "di/execution/query/get_stop_token.h"
 #include "di/execution/query/make_env.h"
@@ -95,20 +100,12 @@ static void meta() {
         di::SameAs<S, decltype(di::execution::get_completion_scheduler<di::SetValue>(di::declval<SE const&>()))>);
     static_assert(di::Scheduler<S>);
 
-    static_assert(di::concepts::IsAwaitable<di::Lazy<i32>>);
     static_assert(
         di::SameAs<di::CompletionSignatures<di::SetValue(i32), di::SetError(di::Error), di::SetStopped()>,
-                   decltype(di::execution::get_completion_signatures(di::declval<di::Lazy<i32>>(), di::EmptyEnv {}))>);
+                   decltype(di::execution::get_completion_signatures(di::declval<di::Task<i32>>(), di::EmptyEnv {}))>);
 
     using R = di::execution::sync_wait_ns::Receiver<
-        di::execution::sync_wait_ns::ResultType<di::execution::RunLoop<>, di::Lazy<i32>>, di::execution::RunLoop<>>;
-
-    static_assert(
-        di::SameAs<di::CompletionSignatures<di::SetValue(i32), di::SetError(di::Error), di::SetStopped()>,
-                   di::meta::Type<di::execution::connect_awaitable_ns::CompletionSignatures<di::Lazy<i32>, R>>>);
-
-    static_assert(di::SameAs<di::CompletionSignatures<di::SetValue(), di::SetError(di::Error), di::SetStopped()>,
-                             di::meta::Type<di::execution::connect_awaitable_ns::CompletionSignatures<di::Lazy<>, R>>>);
+        di::execution::sync_wait_ns::ResultType<di::execution::RunLoop<>, di::Task<i32>>, di::execution::RunLoop<>>;
 
     static_assert(di::concepts::Receiver<R>);
     static_assert(di::concepts::ReceiverOf<
@@ -119,10 +116,10 @@ static void meta() {
 
     static_assert(
         di::SameAs<
-            void, di::meta::ValueTypesOf<di::Lazy<>, di::types::EmptyEnv, di::meta::detail::SingleSenderValueTypeHelper,
+            void, di::meta::ValueTypesOf<di::Task<>, di::types::EmptyEnv, di::meta::detail::SingleSenderValueTypeHelper,
                                          di::meta::detail::SingleSenderValueTypeHelper>>);
-    static_assert(di::concepts::SingleSender<di::Lazy<i32>, di::EmptyEnv>);
-    static_assert(di::concepts::SingleSender<di::Lazy<>, di::EmptyEnv>);
+    static_assert(di::concepts::SingleSender<di::Task<i32>, di::EmptyEnv>);
+    static_assert(di::concepts::SingleSender<di::Task<>, di::EmptyEnv>);
 
     namespace ex = di::execution;
 
@@ -144,18 +141,34 @@ static void sync_wait() {
     ASSERT_EQ(ex::sync_wait(ex::just_stopped()), di::Unexpected(di::BasicError::OperationCanceled));
 }
 
-static void lazy() {
-    constexpr static auto t2 = [] -> di::Lazy<> {
-        co_return {};
+static void task() {
+    namespace ex = di::execution;
+
+    constexpr static auto t2 = [] -> di::Task<> {
+        co_return;
     };
 
-    constexpr static auto task = [] -> di::Lazy<i32> {
+    constexpr static auto task = [] -> di::Task<i32> {
         co_await t2();
         co_return 42;
     };
 
     ASSERT(di::sync_wait(t2()));
     ASSERT_EQ(di::sync_wait(task()), 42);
+
+    auto t0 = *di::SingleThreadedContext::create();
+    auto t1 = *di::SingleThreadedContext::create();
+
+    auto coro = [&] -> di::Task<i32> {
+        static thread_local auto t = 42;
+        t = 5;
+        co_await di::ChangeCoroutineScheduler(t0.get_scheduler());
+        ASSERT_EQ(t, 42);
+        t = 4;
+        co_await di::ChangeCoroutineScheduler(t1.get_scheduler());
+        co_return t;
+    };
+    ASSERT_EQ(ex::sync_wait(coro()), 42);
 }
 
 static void just() {
@@ -177,31 +190,33 @@ static void just() {
 static void coroutine() {
     namespace ex = di::execution;
 
-    constexpr static auto task = [] -> di::Lazy<i32> {
+    constexpr static auto task = [] -> di::Task<i32> {
         auto x = co_await ex::just(42);
         co_return x;
     };
     ASSERT_EQ(di::sync_wait(task()), 42);
 
-    constexpr static auto error = [] -> di::Lazy<i32> {
+    constexpr static auto error = [] -> di::Task<i32> {
         co_await ex::just_error(di::BasicError::InvalidArgument);
         co_return 56;
     };
     ASSERT_EQ(di::sync_wait(error()), di::Unexpected(di::BasicError::InvalidArgument));
 
-    constexpr static auto error_direct = [] -> di::Lazy<i32> {
-        co_return di::Unexpected(di::BasicError::InvalidArgument);
+    constexpr static auto error_direct = [] -> di::Task<i32> {
+        co_yield di::Unexpected(di::BasicError::InvalidArgument);
+        co_return 0;
     };
     ASSERT_EQ(di::sync_wait(error_direct()), di::Unexpected(di::BasicError::InvalidArgument));
 
-    constexpr static auto stopped = [] -> di::Lazy<i32> {
+    constexpr static auto stopped = [] -> di::Task<i32> {
         co_await ex::just_stopped();
         co_return 56;
     };
     ASSERT_EQ(di::sync_wait(stopped()), di::Unexpected(di::BasicError::OperationCanceled));
 
-    constexpr static auto stopped_direct = [] -> di::Lazy<i32> {
-        co_return di::stopped;
+    constexpr static auto stopped_direct = [] -> di::Task<i32> {
+        co_await di::stopped;
+        co_return 0;
     };
     ASSERT_EQ(di::sync_wait(stopped_direct()), di::Unexpected(di::BasicError::OperationCanceled));
 }
@@ -326,6 +341,19 @@ static void continues_on() {
     auto w = ex::transfer_just(scheduler, 42);
 
     ASSERT_EQ(ex::sync_wait(di::move(w)), 42);
+
+    ASSERT(ex::sync_wait(ex::just() | ex::continues_on(scheduler)));
+}
+
+static void affine_on() {
+    namespace ex = di::execution;
+
+    auto scheduler = di::InlineScheduler {};
+
+    auto w = ex::just(42) | ex::affine_on(scheduler);
+    ASSERT_EQ(ex::get_completion_scheduler<di::SetValue>(ex::get_env(w)), scheduler);
+
+    ASSERT_EQ(ex::sync_wait(di::move(w)), 42);
 }
 
 static void as() {
@@ -428,22 +456,25 @@ static void any_sender() {
     ASSERT_EQ(ex::sync_wait_with_variant(Sender4(ex::just_error(di::BasicError::InvalidArgument))),
               di::Unexpected(di::BasicError::InvalidArgument));
 
+    struct E {
+        using Scheduler = di::InlineScheduler;
+    };
     using Sender5 = di::AnySenderOf<int>;
 
-    auto task = [] -> Sender5 {
+    auto task = [] -> di::Task<int, E> {
         auto x = co_await ex::just(42);
         co_return x;
     };
     ASSERT_EQ(di::sync_wait(Sender5(task())), 42);
 
-    auto task2 = [] -> Sender5 {
-        auto x = co_await di::Result<int>(42);
+    auto task2 = [] -> di::Task<int, E> {
+        auto x = co_yield di::Result<int>(42);
         co_return x;
     };
     ASSERT_EQ(di::sync_wait(Sender5(task2())), 42);
 
-    auto task3 = [] -> Sender5 {
-        auto x = co_await di::Result<int>(di::Unexpected(di::BasicError::InvalidArgument));
+    auto task3 = [] -> di::Task<int, E> {
+        auto x = co_yield di::Result<int>(di::Unexpected(di::BasicError::InvalidArgument));
         co_return x;
     };
     ASSERT_EQ(di::sync_wait(Sender5(task3())), di::Unexpected(di::BasicError::InvalidArgument));
@@ -451,10 +482,6 @@ static void any_sender() {
     ASSERT_EQ(di::sync_wait(Sender5(di::Unexpected(di::BasicError::InvalidArgument))),
               di::Unexpected(di::BasicError::InvalidArgument));
     ASSERT_EQ(di::sync_wait(Sender5(di::stopped)), di::Unexpected(di::BasicError::OperationCanceled));
-
-    ASSERT_EQ(di::sync_wait(di::Result<int>(42)), 42);
-    ASSERT_EQ(di::sync_wait(di::Unexpected(di::BasicError::InvalidArgument)),
-              di::Unexpected(di::BasicError::InvalidArgument));
 
     auto executed = false;
     auto read_stop_token = ex::get_stop_token() | ex::then([&](di::concepts::StoppableToken auto stop_token) {
@@ -474,6 +501,9 @@ static void any_scheduler() {
 
     auto concrete = ex::InlineScheduler {};
     auto any = AnySched(concrete);
+
+    ASSERT_EQ(any, any);
+    ASSERT_EQ(any, concrete);
 
     auto executed = false;
 
@@ -791,12 +821,13 @@ static void variant_sender() {
 TEST(execution, meta)
 TEST(execution, sync_wait)
 TEST(execution, just)
-TEST(execution, lazy)
+TEST(execution, task)
 TEST(execution, coroutine)
 TEST(execution, then)
 TEST(execution, inline_scheduler)
 TEST(execution, let)
 TEST(execution, continues_on)
+TEST(execution, affine_on)
 TEST(execution, as)
 TEST(execution, use_resources)
 TEST(execution, any_sender)

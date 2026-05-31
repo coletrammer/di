@@ -7,8 +7,11 @@
 #include "di/execution/algorithm/sync_wait.h"
 #include "di/execution/algorithm/then.h"
 #include "di/execution/algorithm/when_all.h"
+#include "di/execution/algorithm/with_env.h"
 #include "di/execution/any/any_sender.h"
+#include "di/execution/context/inline_scheduler.h"
 #include "di/execution/context/run_loop.h"
+#include "di/execution/coroutine/task.h"
 #include "di/execution/meta/completion_signatures_of.h"
 #include "di/execution/query/is_always_lockstep_sequence.h"
 #include "di/execution/receiver/prelude.h"
@@ -198,16 +201,25 @@ static void let() {
 }
 
 static void async_generator() {
-    auto h = [](int x) -> di::Lazy<int> {
+    namespace ex = di::execution;
+
+    struct E {
+        using Scheduler = di::InlineScheduler;
+    };
+
+    auto h = [](int x) -> di::Task<int, E> {
         co_return x;
     };
 
     enum class Outcome { Value, Error, Stopped };
 
+    auto inline_context = di::InlineContext {};
+    auto scheduler = inline_context.get_scheduler();
+
     auto g = [&](Outcome outcome) -> di::AsyncGenerator<int> {
-        co_yield co_await h(1);
-        co_yield co_await h(2);
-        co_yield co_await h(3);
+        co_yield co_await ex::with_env(ex::make_env(di::empty_env, ex::with(ex::get_scheduler, scheduler)), h(1));
+        co_yield co_await ex::with_env(ex::make_env(di::empty_env, ex::with(ex::get_scheduler, scheduler)), h(2));
+        co_yield co_await ex::with_env(ex::make_env(di::empty_env, ex::with(ex::get_scheduler, scheduler)), h(3));
         if (outcome == Outcome::Error) {
             co_return di::Unexpected(di::BasicError::InvalidArgument);
         } else if (outcome == Outcome::Stopped) {
@@ -216,7 +228,7 @@ static void async_generator() {
         co_return {};
     };
 
-    auto f = [&](Outcome outcome) -> di::Lazy<int> {
+    auto f = [&](Outcome outcome) -> di::Task<int, E> {
         auto sequence = co_await g(outcome);
         auto sum = 0;
         while (auto next = co_await ex::next(sequence)) {

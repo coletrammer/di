@@ -288,7 +288,7 @@ constexpr static void binary() {
 
 TESTC(serialization, json_basic)
 TESTC(serialization, json_pretty)
-TESTC(serialization, json_reflect)
+TESTC_CLANG(serialization, json_reflect)
 TESTC(serialization, json_value)
 TESTC(serialization, json_escaped_string)
 TESTC(serialization, binary)

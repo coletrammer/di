@@ -158,7 +158,8 @@ struct AnyT {
 
         template<typename U, typename VU = RemoveConstructQualifiers<U>>
         requires(!concepts::DerivedFrom<meta::RemoveCVRef<U>, Type> &&
-                 !concepts::InstanceOf<meta::RemoveCVRef<U>, InPlaceType> && concepts::ConstructibleFrom<VU, U &&> &&
+                 !concepts::InstanceOf<meta::RemoveCVRef<U>, InPlaceType> &&
+                 !concepts::InstanceOf<meta::RemoveCVRef<U>, Tuple> && concepts::ConstructibleFrom<VU, U &&> &&
                  concepts::AnyStorableInfallibly<VU, Storage> && concepts::Impl<VU, Interface>)
         constexpr Type(U&& value) {
             this->emplace(in_place_type<VU>, util::forward<U>(value));

@@ -1,3 +1,9 @@
+#include "di/platform/compiler.h"
+
+#ifdef DI_GCC
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+
 #include "di/io/vector_reader.h"
 #include "di/io/vector_writer.h"
 #include "di/reflect/prelude.h"

@@ -12,13 +12,13 @@
 #pragma GCC diagnostic ignored "-Wdangling-reference"
 #endif
 
-#define DI_CO_TRY(...)                                           \
-    __extension__({                                              \
-        auto __result = (__VA_ARGS__);                           \
-        if (!__result) {                                         \
-            co_return di::util::move(__result).__try_did_fail(); \
-        }                                                        \
-        ::di::util::move(__result).__try_did_succeed();          \
+#define DI_CO_TRY(...)                                          \
+    __extension__({                                             \
+        auto __result = (__VA_ARGS__);                          \
+        if (!__result) {                                        \
+            co_yield di::util::move(__result).__try_did_fail(); \
+        }                                                       \
+        ::di::util::move(__result).__try_did_succeed();         \
     }).__try_move_out()
 
 #if !defined(DI_NO_GLOBALS) && !defined(DI_NO_GLOBAL_CO_TRY)
