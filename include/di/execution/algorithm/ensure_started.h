@@ -28,6 +28,7 @@
 #include "di/platform/compiler.h"
 #include "di/sync/atomic.h"
 #include "di/sync/memory_order.h"
+#include "di/sync/stop_token/in_place_stop_callback.h"
 #include "di/sync/stop_token/in_place_stop_source.h"
 #include "di/sync/stop_token/in_place_stop_token.h"
 #include "di/types/in_place.h"
