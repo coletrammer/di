@@ -5,12 +5,14 @@
 #include "di/container/string/erased_string.h"
 #include "di/container/string/string.h"
 #include "di/container/string/string_impl.h"
+#include "di/container/string/string_view.h"
 #include "di/format/concepts/formattable.h"
 #include "di/format/format.h"
 #include "di/format/format_string_impl.h"
 #include "di/format/make_format_args.h"
 #include "di/format/prelude.h"
 #include "di/format/vformat_encoded.h"
+#include "di/function/curry.h"
 #include "di/platform/prelude.h"
 #include "di/types/prelude.h"
 #include "di/vocab/error/error.h"
@@ -143,6 +145,41 @@ namespace detail {
                 fmt::vformat_encoded<Enc>(format, fmt::make_format_args<fmt::FormatContext<Enc>>(args...)));
         }
     };
+
+    struct PrefixError : Curry<PrefixError> {
+        using Enc = di::String::Encoding;
+
+        constexpr static auto operator()(StringView view, di::Error const& error) -> StringErrorCode {
+            return FormatError {}("{}: {}"_sv, view, error);
+        }
+
+        using Curry<PrefixError>::operator();
+        constexpr static auto max_arity = 2ZU;
+    };
+
+    struct PrefixErrorf {
+        using Enc = di::String::Encoding;
+
+        template<concepts::Formattable... Args>
+        constexpr static auto operator()(fmt::FormatStringImpl<Enc, Args&...> format, Args&&... args) {
+            return [format, args = di::make_decayed_tuple(di::forward<Args>(args)...)](
+                       di::Error const& error) mutable -> StringErrorCode {
+                return di::apply(
+                    [&](auto&... inner) {
+                        return PrefixErrorf {}(error, format, inner...);
+                    },
+                    args);
+            };
+        }
+
+        template<concepts::Formattable... Args>
+        constexpr static auto operator()(di::Error const& error, fmt::FormatStringImpl<Enc, Args...> format,
+                                         Args&&... args) -> StringErrorCode {
+            auto const prefix =
+                fmt::vformat_encoded<Enc>(format, fmt::make_format_args<fmt::FormatContext<Enc>>(args...));
+            return PrefixError {}(prefix.view(), error);
+        }
+    };
 }
 }
 
@@ -151,4 +188,6 @@ using vocab::StringError;
 using vocab::StringErrorCode;
 
 constexpr inline auto format_error = vocab::detail::FormatError {};
+constexpr inline auto prefix_error = vocab::detail::PrefixError {};
+constexpr inline auto prefix_errorf = vocab::detail::PrefixErrorf {};
 }
