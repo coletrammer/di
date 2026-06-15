@@ -4,6 +4,7 @@
 #include "di/meta/algorithm.h"
 #include "di/meta/core.h"
 #include "di/meta/language.h"
+#include "di/parser/basic/integer.h"
 
 namespace di::util {
 namespace detail {
@@ -143,6 +144,12 @@ private:
                     return formatter(context, self.raw_value());
                 }
             };
+        };
+    }
+
+    constexpr friend auto tag_invoke(types::Tag<parser::create_parser_in_place>, InPlaceType<StrongInt>) {
+        return parser::integer<Type>() % [](Type x) {
+            return StrongInt(x);
         };
     }
 
