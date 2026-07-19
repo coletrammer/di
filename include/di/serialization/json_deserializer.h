@@ -177,18 +177,23 @@ public:
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>
-    requires(M::is_bool() || M::is_integer() || M::is_string())
+    requires(M::is_bool() || M::is_string() || M::is_integer() ||
+             concepts::InstanceOf<meta::RemoveCVRef<T>, di::StrongInt>)
     constexpr auto deserialize(InPlaceType<T>, M) -> Result<T> {
         if constexpr (M::is_bool()) {
             auto result = DI_TRY(deserialize_bool());
+            DI_TRY(skip_whitespace());
+            return result;
+        } else if constexpr (M::is_string()) {
+            auto result = DI_TRY(deserialize_string());
             DI_TRY(skip_whitespace());
             return result;
         } else if constexpr (M::is_integer()) {
             auto result = DI_TRY(deserialize_number(in_place_type<T>));
             DI_TRY(skip_whitespace());
             return result;
-        } else if constexpr (M::is_string()) {
-            auto result = DI_TRY(deserialize_string());
+        } else {
+            auto result = T(DI_TRY(deserialize_number(in_place_type<meta::Type<meta::RemoveCVRef<T>>>)));
             DI_TRY(skip_whitespace());
             return result;
         }
@@ -196,7 +201,8 @@ public:
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>
     constexpr auto deserialize(InPlaceType<T>, M) -> Result<T>
-    requires(M::is_custom_atom() && requires { di::parse<T>(di::StringView()); })
+    requires(M::is_custom_atom() && !concepts::InstanceOf<meta::RemoveCVRef<T>, di::StrongInt> &&
+             requires { di::parse<T>(di::StringView()); })
     {
         auto string = DI_TRY(deserialize_string());
         auto result = DI_TRY(di::parse<T>(string.view()).transform_error([&](di::Error error) {

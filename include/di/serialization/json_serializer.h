@@ -27,6 +27,7 @@
 #include "di/util/exchange.h"
 #include "di/util/reference_wrapper.h"
 #include "di/util/scope_value_change.h"
+#include "di/util/strong_int.h"
 #include "di/vocab/error/result.h"
 #include "di/vocab/tuple/tuple.h"
 #include "di/vocab/tuple/tuple_element.h"
@@ -273,7 +274,8 @@ public:
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>
-    requires(M::is_bool() || M::is_string() || M::is_integer())
+    requires(M::is_bool() || M::is_string() || M::is_integer() ||
+             concepts::InstanceOf<meta::RemoveCVRef<T>, di::StrongInt>)
     constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer> {
         if constexpr (M::is_bool()) {
             return serialize_bool(M::get(value));
@@ -281,12 +283,15 @@ public:
             return serialize_string(M::get(value));
         } else if constexpr (M::is_integer()) {
             return serialize_number(M::get(value));
+        } else {
+            return serialize_number(M::get(value).raw_value());
         }
     }
 
     template<typename T, concepts::InstanceOf<reflection::Atom> M>
     constexpr auto serialize(T&& value, M) -> meta::WriterResult<void, Writer>
-    requires(M::is_custom_atom() && requires { di::to_string(value); })
+    requires(M::is_custom_atom() && !concepts::InstanceOf<meta::RemoveCVRef<T>, di::StrongInt> &&
+             requires { di::to_string(value); })
     {
         auto string = di::to_string(value);
         return serialize_string(string.view());
